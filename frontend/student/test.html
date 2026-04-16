@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test in Progress — Adaptive Test Engine</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!--
+    test.html — Core Testing Environment
+    ─────────────────────────────────────────────────────────────
+    PURPOSE   : Distraction-free test UI. Renders one question
+                at a time. Tracks student answers locally, then
+                submits the full answer set at the end.
+    GROUPS    :
+      AI/Question Bank: Questions are loaded via
+        GET /api/questions/next?testId={id}&studentId={id}&level={n}
+        Response shape expected: see QUESTION_SCHEMA comment below.
+      Front/Back Integration: Wire up submitAnswer() and
+        submitTest() to your endpoints.
+      DB/Session Team: Session ID must be active before
+        this page loads. Store partial answers on each
+        "Next" click in case of disconnect.
+      Data & Reporting: On test completion, POST the full
+        answerMap to /api/results/submit
+    ─────────────────────────────────────────────────────────────
+
+    QUESTION_SCHEMA (expected from AI team):
+    {
+      "questionId": "Q-042",
+      "questionNumber": 3,
+      "totalQuestions": 15,
+      "subject": "algorithms",
+      "difficulty": 3,
+      "text": "What is the time complexity of merge sort?",
+      "type": "multiple-choice",  // or "free-response"
+      "choices": [
+        { "id": "A", "text": "O(n)" },
+        { "id": "B", "text": "O(n log n)" },
+        { "id": "C", "text": "O(n²)" },
+        { "id": "D", "text": "O(log n)" }
+      ],
+      "hint": "Think about the divide step."  // optional
+    }
+  -->
+
+  <style>
+    /* ── Test page: no distractions ── */
+    body {
+      background: var(--off-white);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* Focused test header (no nav links) */
+    .test-header {
+      background: var(--navy);
+      border-bottom: 2px solid var(--accent);
+      padding: 0 28px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-md);
+    }
+
+    .test-header .test-title {
+      font-family: var(--font-body);
+      font-weight: 600;
+      color: var(--white);
+      font-size: 0.95rem;
+    }
+    .test-header .test-title span { color: var(--slate-light); font-weight: 400; }
+
+    /* ── TIMER ── */
+    .timer-block {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--navy-light);
+      padding: 7px 16px;
+      border-radius: 99px;
+      border: 1px solid var(--slate);
+    }
+    .timer-block .timer-icon { font-size: 0.85rem; }
+    .timer-display {
+      font-family: var(--font-mono);
+      font-size: 1rem;
+      font-weight: 500;
+      color: var(--white);
+      letter-spacing: 1.5px;
+      min-width: 55px;
+      text-align: center;
+    }
+    .timer-display.warning { color: var(--accent); }
+    .timer-display.danger  { color: #ff6b6b; animation: timerPulse 1s ease-in-out infinite; }
+
+    @keyframes timerPulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ── MAIN TEST LAYOUT: sidebar + question area ── */
+    .test-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 1fr auto;
+      gap: 0;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 24px;
+      gap: 24px;
+    }
+
+    /* ── QUESTION MAP SIDEBAR ── */
+    .sidebar {
+      grid-row: 1 / 3;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      align-self: start;
+      position: sticky;
+      top: 80px;
+    }
+
+    .sidebar h3 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--slate);
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* Question map grid */
+    .question-map {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+
+    /*
+      Each button in the question map represents one question.
+      data-question-num  — the question number (1-based)
+      data-status        — "unanswered" | "answered" | "flagged" | "current"
+    */
+    .q-map-btn {
+      width: 100%;
+      aspect-ratio: 1;
+      border: 1.5px solid var(--border);
+      border-radius: 5px;
+      background: var(--white);
+      color: var(--navy);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: var(--font-body);
+    }
+    .q-map-btn:hover { border-color: var(--navy); background: var(--off-white); }
+    .q-map-btn[data-status="current"]    { background: var(--navy); color: var(--white); border-color: var(--navy); }
+    .q-map-btn[data-status="answered"]   { background: #d4edda; border-color: var(--success); color: var(--success); }
+    .q-map-btn[data-status="flagged"]    { background: #fef9e7; border-color: var(--accent);  color: #7d6009; }
+    .q-map-btn[data-status="unanswered"] { background: var(--white); }
+
+    /* Legend */
+    .map-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-top: 4px;
+    }
+    .map-legend .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--slate);
+    }
+    .legend-dot {
+      width: 12px; height: 12px;
+      border-radius: 3px;
+      border: 1.5px solid;
+      flex-shrink: 0;
+    }
+    .legend-dot.current    { background: var(--navy);  border-color: var(--navy);    }
+    .legend-dot.answered   { background: #d4edda;       border-color: var(--success); }
+    .legend-dot.flagged    { background: #fef9e7;       border-color: var(--accent);  }
+    .legend-dot.unanswered { background: var(--white);  border-color: var(--border);  }
+
+    /* Progress summary in sidebar */
+    .sidebar-progress {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .sidebar-progress .prog-label {
+      font-size: 0.75rem;
+      color: var(--slate);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── QUESTION PANEL ── */
+    .question-panel {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 36px;
+      box-shadow: var(--shadow-sm);
+      min-height: 420px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .question-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .question-counter {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--slate);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .question-actions-top {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Question text */
+    .question-text {
+      font-size: 1.1rem;
+      color: var(--navy);
+      line-height: 1.7;
+      margin-bottom: 32px;
+      font-weight: 400;
+    }
+
+    /* Code block inside question (for CS problems) */
+    .question-text pre {
+      background: var(--navy);
+      color: #a8ff78;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      padding: 16px 20px;
+      border-radius: var(--radius);
+      overflow-x: auto;
+      margin: 16px 0;
+      border-left: 3px solid var(--accent);
+    }
+
+    /* ── ANSWER CHOICES ── */
+    .choices-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+    }
+
+    /*
+      INTEGRATION POINT (Front/Back Integration Team)
+      ─────────────────────────────────────────────────
+      Each choice button has:
+        data-choice="A|B|C|D"   — the answer identifier
+        data-question-id        — parent question ID
+      When selected, call selectAnswer(questionId, choiceId).
+      The integration layer should record the answer and
+      potentially call GET /api/questions/next for adaptive routing.
+    */
+    .choice-btn {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      width: 100%;
+      padding: 14px 18px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--white);
+      color: var(--navy);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s var(--ease);
+      line-height: 1.5;
+    }
+    .choice-btn:hover { border-color: var(--navy); background: var(--off-white); }
+
+    .choice-btn.selected {
+      border-color: var(--navy);
+      background: #e8edf5;
+      box-shadow: 0 0 0 2px rgba(13,27,42,0.15);
+    }
+
+    .choice-letter {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--slate);
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .choice-btn:hover    .choice-letter { border-color: var(--navy); color: var(--navy); }
+    .choice-btn.selected .choice-letter { background: var(--navy); border-color: var(--navy); color: var(--white); }
+
+    /* ── NAVIGATION BAR (below question) ── */
+    .question-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0 0;
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+    }
+
+    .nav-left, .nav-right { display: flex; gap: 10px; }
+
+    /* ── LOADING STATE ── */
+    .question-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      gap: 16px;
+      color: var(--slate);
+      font-size: 0.9rem;
+    }
+
+    /* ── SUBMIT CONFIRM MODAL ── */
+    .modal h2 { margin-bottom: 8px; }
+    .modal p  { color: var(--slate); margin-bottom: 20px; }
+    .modal .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+    .unanswered-warning { color: var(--danger); font-weight: 600; font-size: 0.88rem; margin-bottom: 16px; }
+
+    /* Responsive: stack on small screens */
+    @media (max-width: 860px) {
+      .test-body {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+      .sidebar {
+        grid-row: auto;
+        position: static;
+        order: -1;
+      }
+      .question-map { grid-template-columns: repeat(8, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════
+       TEST HEADER (Minimal — no nav links)
+  ══════════════════════════════════════════════ -->
+  <header class="test-header" role="banner">
+
+    <div class="test-title">
+      <span data-bind="test-name">Sorting Algorithms</span>
+      &nbsp;·&nbsp;
+      <span data-bind="student-name" style="color:var(--slate-light)">Jane Student</span>
+    </div>
+
+    <!-- Persistent countdown timer -->
+    <!--
+      Integration Team: Initialize the timer with the
+      test's timeLimit (in minutes) from sessionStorage
+      or from the API response.
+    -->
+    <div class="timer-block" aria-live="polite" aria-label="Time remaining">
+      <span class="timer-icon">⏱</span>
+      <span class="timer-display" id="timer-display">30:00</span>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn btn-sm btn-outline"
+              style="color:var(--slate-light);border-color:var(--slate)"
+              data-action="pause-test"
+              onclick="togglePause()">
+        ⏸ Pause
+      </button>
+      <button class="btn btn-sm btn-danger"
+              data-action="exit-test"
+              onclick="confirmExit()">
+        Exit Test
+      </button>
+    </div>
+
+  </header>
+
+  <!-- ══════════════════════════════════════════════
+       MAIN TEST BODY: Sidebar + Question
+  ══════════════════════════════════════════════ -->
+  <main class="test-body" role="main">
+
+    <!-- ── LEFT: Question Map Sidebar ── -->
+    <aside class="sidebar" aria-label="Question map">
+
+      <h3>Question Map</h3>
+
+      <!--
+        Question map buttons — generated by JS below.
+        DB/Session Team: Persist statuses (answered/flagged)
+        on every navigation so a page refresh restores state.
+      -->
+      <div class="question-map" id="question-map" role="navigation" aria-label="Jump to question">
+        <!-- Populated by renderQuestionMap() in JS -->
+      </div>
+
+      <!-- Legend -->
+      <div class="map-legend" aria-label="Map legend">
+        <div class="legend-item"><div class="legend-dot current"></div>Current</div>
+        <div class="legend-item"><div class="legend-dot answered"></div>Answered</div>
+        <div class="legend-item"><div class="legend-dot flagged"></div>Flagged</div>
+        <div class="legend-item"><div class="legend-dot unanswered"></div>Unanswered</div>
+      </div>
+
+      <!-- Sidebar progress summary -->
+      <div class="sidebar-progress">
+        <div class="prog-label">
+          <span>Answered</span>
+          <span><strong id="answered-count">0</strong> / <span id="total-count">15</span></span>
+        </div>
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Submit button at bottom of sidebar -->
+      <button
+        class="btn btn-accent"
+        style="width:100%; margin-top: 20px;"
+        data-action="submit-test"
+        onclick="openSubmitModal()"
+      >
+        Submit Test
+      </button>
+
+    </aside>
+
+    <!-- ── RIGHT: Question Panel ── -->
+    <div class="question-panel" id="question-panel" role="region" aria-label="Current question">
+
+      <!-- Question metadata row -->
+      <div class="question-meta">
+        <span class="question-counter" id="question-counter">
+          Question 1 of 15
+        </span>
+        <div class="question-actions-top">
+          <!-- Flag button: marks a question for review -->
+          <button class="btn btn-sm btn-outline"
+                  id="flag-btn"
+                  data-action="flag-question"
+                  onclick="toggleFlag()"
+                  aria-pressed="false">
+            🚩 Flag for Review
+          </button>
+        </div>
+      </div>
+
+      <!-- Question text — populated by JS -->
+      <!--
+        AI/Question Bank Team: The question text may contain
+        plain text or a <pre> block with code. Your JSON
+        response should use "\n" for newlines inside code
+        blocks. We'll render them as <pre> tags here.
+      -->
+      <div class="question-text" id="question-text" aria-live="polite">
+        <!-- PLACEHOLDER: Loaded by loadQuestion() -->
+        <div class="question-loading">
+          <div class="spinner"></div>
+          <span>Loading question...</span>
+        </div>
+      </div>
+
+      <!-- Answer choices — populated by JS -->
+      <!--
+        data-choice="A/B/C/D"        — answer identifier
+        data-question-id             — current question ID
+        Integration Team: When a choice is clicked,
+        call selectAnswer(questionId, choiceId) which
+        stores the answer locally and reports to the server.
+      -->
+      <ul class="choices-list" id="choices-list" role="radiogroup" aria-label="Answer choices">
+        <!-- Populated by renderChoices() in JS -->
+      </ul>
+
+      <!-- Navigation row -->
+      <div class="question-nav">
+        <div class="nav-left">
+          <button class="btn btn-outline"
+                  id="prev-btn"
+                  data-action="prev-question"
+                  onclick="navigateQuestion(-1)"
+                  disabled>
+            ← Previous
+          </button>
+        </div>
+        <div class="nav-right">
+          <button class="btn btn-primary"
+                  id="next-btn"
+                  data-action="next-question"
+                  onclick="navigateQuestion(1)">
+            Next →
+          </button>
+        </div>
+      </div>
+
+    </div>
+    <!-- end .question-panel -->
+
+  </main>
+
+  <!-- ══════════════════════════════════════════════
+       SUBMIT CONFIRMATION MODAL
+  ══════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="submit-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <h2 id="modal-title">Submit Your Test</h2>
+      <p>Are you sure you want to submit? You cannot change your answers after submission.</p>
+
+      <!-- Filled dynamically if there are unanswered questions -->
+      <div id="unanswered-warning" class="unanswered-warning" style="display:none;"></div>
+
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="closeSubmitModal()">Go Back</button>
+        <button class="btn btn-accent btn-lg"
+                data-action="confirm-submit"
+                onclick="submitTest()">
+          ✓ Submit Test
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       JAVASCRIPT — Test Engine Logic
+       ─────────────────────────────────────────────
+       NOTE TO INTEGRATION TEAM:
+       Replace the PLACEHOLDER_* sections with real
+       API calls. All data-attributes on DOM elements
+       are designed for easy querySelector targeting.
+  ══════════════════════════════════════════════ -->
+  <script>
+
+    // ── STATE ──────────────────────────────────────────────────
+    // Integration/DB Team: This object mirrors what you'll
+    // persist server-side per session.
+    const testState = {
+      testId:          sessionStorage.getItem('activeTestId') || 'TEST-001',
+      studentId:       sessionStorage.getItem('studentId')    || 'STU-DEMO',
+      currentQuestion: 0,       // 0-based index
+      totalQuestions:  15,      // overridden when questions load
+      timeRemaining:   30 * 60, // seconds (overridden by test config)
+      isPaused:        false,
+      timerInterval:   null,
+
+      // answerMap: { [questionId]: choiceId }
+      // Integration Team: POST this map on submitTest()
+      answerMap: {},
+
+      // flagged: Set of question indices flagged for review
+      flagged: new Set(),
+
+      // questions: array of question objects from the API
+      // AI/Question Bank Team: your API populates this array
+      questions: [],
+    };
+
+    // ── PLACEHOLDER QUESTIONS ──────────────────────────────────
+    // AI/Question Bank Team: DELETE these and replace with
+    // a real call to GET /api/questions?testId=&studentId=
+    // The data shape must match QUESTION_SCHEMA in the header.
+    const PLACEHOLDER_QUESTIONS = [
+      {
+        questionId: 'Q-001',
+        text: 'What is the time complexity of the following merge sort implementation in the average case?<pre>void mergeSort(int[] arr, int l, int r) {\n  if (l &lt; r) {\n    int m = (l + r) / 2;\n    mergeSort(arr, l, m);\n    mergeSort(arr, m + 1, r);\n    merge(arr, l, m, r);\n  }\n}</pre>',
+        choices: [
+          { id: 'A', text: 'O(n) — linear time' },
+          { id: 'B', text: 'O(n log n) — linearithmic time' },
+          { id: 'C', text: 'O(n²) — quadratic time' },
+          { id: 'D', text: 'O(log n) — logarithmic time' },
+        ]
+      },
+      {
+        questionId: 'Q-002',
+        text: 'Which sorting algorithm is most efficient when the input array is already nearly sorted?',
+        choices: [
+          { id: 'A', text: 'Merge Sort' },
+          { id: 'B', text: 'Quick Sort (with random pivot)' },
+          { id: 'C', text: 'Insertion Sort' },
+          { id: 'D', text: 'Heap Sort' },
+        ]
+      },
+      {
+        questionId: 'Q-003',
+        text: 'What is the worst-case space complexity of an in-place Quicksort due to recursion stack depth?',
+        choices: [
+          { id: 'A', text: 'O(1)' },
+          { id: 'B', text: 'O(log n)' },
+          { id: 'C', text: 'O(n)' },
+          { id: 'D', text: 'O(n²)' },
+        ]
+      },
+      // PLACEHOLDER: Add more or replace with API call
+      ...Array.from({ length: 12 }, (_, i) => ({
+        questionId: `Q-${String(i + 4).padStart(3, '0')}`,
+        text: `[AI-generated question ${i + 4} — Adaptive Test Engine will populate this from the Question Bank API. The difficulty will be adjusted based on your previous answers.]`,
+        choices: [
+          { id: 'A', text: 'Answer choice A (placeholder)' },
+          { id: 'B', text: 'Answer choice B (placeholder)' },
+          { id: 'C', text: 'Answer choice C (placeholder)' },
+          { id: 'D', text: 'Answer choice D (placeholder)' },
+        ]
+      }))
+    ];
+
+    // ── INIT ───────────────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      // PLACEHOLDER: Replace with real API fetch
+      // Integration Team: GET /api/questions?testId={testState.testId}
+      testState.questions      = PLACEHOLDER_QUESTIONS;
+      testState.totalQuestions = testState.questions.length;
+
+      renderQuestionMap();
+      loadQuestion(0);
+      startTimer();
+
+      // Update total count display
+      document.getElementById('total-count').textContent = testState.totalQuestions;
+    });
+
+    // ── TIMER ──────────────────────────────────────────────────
+    function startTimer() {
+      testState.timerInterval = setInterval(() => {
+        if (testState.isPaused) return;
+
+        testState.timeRemaining--;
+        updateTimerDisplay();
+
+        // Auto-submit when time runs out
+        if (testState.timeRemaining <= 0) {
+          clearInterval(testState.timerInterval);
+          alert('Time is up! Your answers will be submitted automatically.');
+          submitTest();
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const el  = document.getElementById('timer-display');
+      const min = Math.floor(testState.timeRemaining / 60);
+      const sec = testState.timeRemaining % 60;
+      el.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+
+      // Visual urgency: 5 min = warning, 1 min = danger
+      el.classList.remove('warning', 'danger');
+      if (testState.timeRemaining <= 60)  el.classList.add('danger');
+      else if (testState.timeRemaining <= 300) el.classList.add('warning');
+    }
+
+    function togglePause() {
+      testState.isPaused = !testState.isPaused;
+      const btn = document.querySelector('[data-action="pause-test"]');
+      btn.textContent = testState.isPaused ? '▶ Resume' : '⏸ Pause';
+    }
+
+    // ── QUESTION RENDERING ─────────────────────────────────────
+    function loadQuestion(index) {
+      testState.currentQuestion = index;
+      const q = testState.questions[index];
+      if (!q) return;
+
+      // Update counter
+      document.getElementById('question-counter').textContent =
+        `Question ${index + 1} of ${testState.totalQuestions}`;
+
+      // Render question text (support HTML for code blocks)
+      document.getElementById('question-text').innerHTML = q.text;
+
+      // Render choices
+      renderChoices(q);
+
+      // Update nav buttons
+      document.getElementById('prev-btn').disabled = (index === 0);
+      document.getElementById('next-btn').textContent =
+        (index === testState.totalQuestions - 1) ? 'Review & Submit' : 'Next →';
+
+      // Update flag button state
+      const flagBtn = document.getElementById('flag-btn');
+      const isFlagged = testState.flagged.has(index);
+      flagBtn.textContent  = isFlagged ? '🚩 Flagged' : '🚩 Flag for Review';
+      flagBtn.style.color  = isFlagged ? 'var(--accent)' : '';
+      flagBtn.setAttribute('aria-pressed', String(isFlagged));
+
+      // Refresh question map
+      renderQuestionMap();
+    }
+
+    function renderChoices(question) {
+      const list = document.getElementById('choices-list');
+      list.innerHTML = '';
+      const savedAnswer = testState.answerMap[question.questionId];
+
+      question.choices.forEach(choice => {
+        const li = document.createElement('li');
+
+        /*
+          data-choice and data-question-id are the primary
+          hooks for the Integration Team's answer-recording logic.
+        */
+        li.innerHTML = `
+          <button
+            class="choice-btn ${savedAnswer === choice.id ? 'selected' : ''}"
+            data-choice="${choice.id}"
+            data-question-id="${question.questionId}"
+            onclick="selectAnswer('${question.questionId}', '${choice.id}', this)"
+            role="radio"
+            aria-checked="${savedAnswer === choice.id}"
+            aria-label="Choice ${choice.id}: ${choice.text}"
+          >
+            <span class="choice-letter" aria-hidden="true">${choice.id}</span>
+            <span class="choice-text">${choice.text}</span>
+          </button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    // ── ANSWER SELECTION ───────────────────────────────────────
+    /**
+     * selectAnswer(questionId, choiceId, element)
+     * ─────────────────────────────────────────────
+     * Records the student's answer locally.
+     *
+     * Integration Team: After storing locally, also call:
+     *   POST /api/sessions/answer
+     *   Body: { sessionId, questionId, choiceId, timestamp }
+     * This ensures partial credit and resumability.
+     *
+     * AI/Question Bank: After each answer, you may call
+     *   GET /api/questions/next?questionId=&correct=true|false
+     * to get the adaptively-selected next question.
+     */
+    function selectAnswer(questionId, choiceId, el) {
+      // Deselect all choices for this question
+      document.querySelectorAll(`[data-question-id="${questionId}"]`).forEach(btn => {
+        btn.classList.remove('selected');
+        btn.setAttribute('aria-checked', 'false');
+      });
+
+      // Select chosen answer
+      el.classList.add('selected');
+      el.setAttribute('aria-checked', 'true');
+
+      // Store in local answer map
+      testState.answerMap[questionId] = choiceId;
+
+      // Persist to sessionStorage (DB Team: replace with API call)
+      sessionStorage.setItem('answerMap', JSON.stringify(testState.answerMap));
+
+      console.log(`[Answer] Q:${questionId} → ${choiceId}`);
+
+      // Update sidebar progress
+      updateProgress();
+      renderQuestionMap();
+    }
+
+    // ── QUESTION MAP ───────────────────────────────────────────
+    function renderQuestionMap() {
+      const mapEl = document.getElementById('question-map');
+      mapEl.innerHTML = '';
+
+      testState.questions.forEach((q, i) => {
+        let status = 'unanswered';
+        if (i === testState.currentQuestion) status = 'current';
+        else if (testState.flagged.has(i))   status = 'flagged';
+        else if (testState.answerMap[q.questionId]) status = 'answered';
+
+        const btn = document.createElement('button');
+        btn.className       = 'q-map-btn';
+        btn.dataset.status  = status;
+        btn.dataset.questionNum = i + 1;
+        btn.textContent     = i + 1;
+        btn.setAttribute('aria-label', `Go to question ${i + 1}, status: ${status}`);
+        btn.onclick         = () => loadQuestion(i);
+        mapEl.appendChild(btn);
+      });
+    }
+
+    // ── FLAG FOR REVIEW ────────────────────────────────────────
+    function toggleFlag() {
+      const i = testState.currentQuestion;
+      if (testState.flagged.has(i)) testState.flagged.delete(i);
+      else                          testState.flagged.add(i);
+      loadQuestion(i); // Re-render to update button state
+    }
+
+    // ── NAVIGATION ─────────────────────────────────────────────
+    function navigateQuestion(direction) {
+      const next = testState.currentQuestion + direction;
+      if (next >= 0 && next < testState.totalQuestions) {
+        loadQuestion(next);
+      } else if (next >= testState.totalQuestions) {
+        openSubmitModal();
+      }
+    }
+
+    // ── PROGRESS ───────────────────────────────────────────────
+    function updateProgress() {
+      const answered = Object.keys(testState.answerMap).length;
+      const total    = testState.totalQuestions;
+      document.getElementById('answered-count').textContent = answered;
+      document.getElementById('progress-fill').style.width  = `${(answered / total) * 100}%`;
+    }
+
+    // ── SUBMIT MODAL ───────────────────────────────────────────
+    function openSubmitModal() {
+      const answered   = Object.keys(testState.answerMap).length;
+      const unanswered = testState.totalQuestions - answered;
+      const warning    = document.getElementById('unanswered-warning');
+
+      if (unanswered > 0) {
+        warning.textContent = `⚠ You have ${unanswered} unanswered question${unanswered > 1 ? 's' : ''}. These will be marked incorrect.`;
+        warning.style.display = 'block';
+      } else {
+        warning.style.display = 'none';
+      }
+
+      document.getElementById('submit-modal').classList.add('open');
+    }
+
+    function closeSubmitModal() {
+      document.getElementById('submit-modal').classList.remove('open');
+    }
+
+    /**
+     * submitTest()
+     * ─────────────────────────────────────────────
+     * INTEGRATION POINT
+     * Integration Team: Replace the simulated redirect
+     * with a real POST to /api/results/submit
+     *
+     * Body: {
+     *   testId:    testState.testId,
+     *   studentId: testState.studentId,
+     *   answerMap: testState.answerMap,
+     *   timeTaken: (original time - timeRemaining)
+     * }
+     *
+     * On success → redirect to results.html with resultId
+     */
+    function submitTest() {
+      clearInterval(testState.timerInterval);
+      closeSubmitModal();
+
+      const payload = {
+        testId:    testState.testId,
+        studentId: testState.studentId,
+        answerMap: testState.answerMap,
+        timeTaken: (30 * 60) - testState.timeRemaining,
+      };
+
+      console.log('[Submit] Posting results:', payload);
+      // PLACEHOLDER: Simulate navigation to results
+      sessionStorage.setItem('lastResult', JSON.stringify(payload));
+      window.location.href = 'results.html';
+    }
+
+    // ── EXIT ───────────────────────────────────────────────────
+    function confirmExit() {
+      if (confirm('Are you sure you want to exit? Your progress will be lost.')) {
+        clearInterval(testState.timerInterval);
+        sessionStorage.removeItem('activeTestId');
+        window.location.href = 'dashboard.html';
+      }
+    }
+
+    // Close modal on overlay click
+    document.getElementById('submit-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeSubmitModal();
+    });
+
+  </script>
+
+</body>
+</html>

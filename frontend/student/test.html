@@ -40,6 +40,7 @@
         { "id": "C", "text": "O(n²)" },
         { "id": "D", "text": "O(log n)" }
       ],
+      "correct": "B",             // AI team: required for adaptive scoring
       "hint": "Think about the divide step."  // optional
     }
   -->
@@ -471,6 +472,8 @@
         <span class="question-counter" id="question-counter">
           Question 1 of 15
         </span>
+        <!-- Adaptive difficulty badge — updates after each committed answer -->
+        <span class="badge badge-accent" id="difficulty-badge" aria-live="polite">Intermediate</span>
         <div class="question-actions-top">
           <!-- Flag button: marks a question for review -->
           <button class="btn btn-sm btn-outline"
@@ -531,6 +534,18 @@
         </div>
       </div>
 
+      <!-- Difficulty path — one dot per committed answer.
+           Size = difficulty level at time of answer; color = correct/wrong. -->
+      <div id="difficulty-path-row"
+           style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+                  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;"
+           aria-label="Difficulty path">
+        <span style="font-size: 0.72rem; color: var(--slate); text-transform: uppercase;
+                     letter-spacing: 0.6px; font-weight: 600;">Difficulty Path</span>
+        <div id="difficulty-path-dots"
+             style="display: flex; align-items: center; gap: 8px; min-height: 18px;"></div>
+      </div>
+
     </div>
     <!-- end .question-panel -->
 
@@ -571,16 +586,19 @@
     // ── STATE ──────────────────────────────────────────────────
     // Integration/DB Team: This object mirrors what you'll
     // persist server-side per session.
+    const QUESTION_TIME_LIMIT = 30; // seconds per question
+
     const testState = {
       testId:          sessionStorage.getItem('activeTestId') || 'TEST-001',
       studentId:       sessionStorage.getItem('studentId')    || 'STU-DEMO',
       currentQuestion: 0,       // 0-based index
       totalQuestions:  15,      // overridden when questions load
-      timeRemaining:   30 * 60, // seconds (overridden by test config)
+      timeRemaining:   QUESTION_TIME_LIMIT, // seconds left on CURRENT question
       isPaused:        false,
       timerInterval:   null,
+      totalTimeSpent:  0,       // accumulated across committed questions
 
-      // answerMap: { [questionId]: choiceId }
+      // answerMap: { [questionId]: choiceId | '__TIMEOUT__' }
       // Integration Team: POST this map on submitTest()
       answerMap: {},
 
@@ -590,6 +608,18 @@
       // questions: array of question objects from the API
       // AI/Question Bank Team: your API populates this array
       questions: [],
+
+      // ── Adaptive state ────────────────────────────────────
+      // currentDifficulty — 1 Beginner, 2 Intermediate, 3 Advanced.
+      // Adjusted after each committed answer: +1 on correct (cap 3),
+      // -1 on wrong or timeout (floor 1).
+      currentDifficulty: 2,
+      // difficultyPath — one entry per COMMITTED answer, in order.
+      // Rendered as dots at the bottom of the question panel.
+      difficultyPath:    [],    // [{ level: 1..3, correct: boolean }]
+      // previewChoice — the choice the student has clicked but not yet
+      // committed. Committed on Next or on timer expiry.
+      previewChoice:     null,
     };
 
     // ── PLACEHOLDER QUESTIONS ──────────────────────────────────
@@ -605,7 +635,8 @@
           { id: 'B', text: 'O(n log n) — linearithmic time' },
           { id: 'C', text: 'O(n²) — quadratic time' },
           { id: 'D', text: 'O(log n) — logarithmic time' },
-        ]
+        ],
+        correct: 'B'
       },
       {
         questionId: 'Q-002',
@@ -615,7 +646,8 @@
           { id: 'B', text: 'Quick Sort (with random pivot)' },
           { id: 'C', text: 'Insertion Sort' },
           { id: 'D', text: 'Heap Sort' },
-        ]
+        ],
+        correct: 'C'
       },
       {
         questionId: 'Q-003',
@@ -625,7 +657,8 @@
           { id: 'B', text: 'O(log n)' },
           { id: 'C', text: 'O(n)' },
           { id: 'D', text: 'O(n²)' },
-        ]
+        ],
+        correct: 'C'
       },
       // PLACEHOLDER: Add more or replace with API call
       ...Array.from({ length: 12 }, (_, i) => ({
@@ -636,7 +669,8 @@
           { id: 'B', text: 'Answer choice B (placeholder)' },
           { id: 'C', text: 'Answer choice C (placeholder)' },
           { id: 'D', text: 'Answer choice D (placeholder)' },
-        ]
+        ],
+        correct: 'B'
       }))
     ];
 
@@ -648,40 +682,44 @@
       testState.totalQuestions = testState.questions.length;
 
       renderQuestionMap();
-      loadQuestion(0);
-      startTimer();
+      updateDifficultyBadge();
+      renderDifficultyPath();
+      loadQuestion(0); // starts the per-question timer itself
 
       // Update total count display
       document.getElementById('total-count').textContent = testState.totalQuestions;
     });
 
-    // ── TIMER ──────────────────────────────────────────────────
+    // ── PER-QUESTION TIMER ─────────────────────────────────────
+    // Each question gets its own QUESTION_TIME_LIMIT-second countdown.
+    // On expiry the current question is committed as wrong and we advance.
     function startTimer() {
+      clearInterval(testState.timerInterval);
+      testState.timeRemaining = QUESTION_TIME_LIMIT;
+      updateTimerDisplay();
+
       testState.timerInterval = setInterval(() => {
         if (testState.isPaused) return;
 
         testState.timeRemaining--;
         updateTimerDisplay();
 
-        // Auto-submit when time runs out
         if (testState.timeRemaining <= 0) {
           clearInterval(testState.timerInterval);
-          alert('Time is up! Your answers will be submitted automatically.');
-          submitTest();
+          commitAndAdvance(); // previewChoice is null → wrong
         }
       }, 1000);
     }
 
     function updateTimerDisplay() {
-      const el  = document.getElementById('timer-display');
-      const min = Math.floor(testState.timeRemaining / 60);
-      const sec = testState.timeRemaining % 60;
-      el.textContent = `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      const el = document.getElementById('timer-display');
+      const t  = Math.max(0, testState.timeRemaining);
+      // Keep MM:SS format so the existing warning/danger styling still applies.
+      el.textContent = `00:${String(t).padStart(2, '0')}`;
 
-      // Visual urgency: 5 min = warning, 1 min = danger
       el.classList.remove('warning', 'danger');
-      if (testState.timeRemaining <= 60)  el.classList.add('danger');
-      else if (testState.timeRemaining <= 300) el.classList.add('warning');
+      if (t <= 5)       el.classList.add('danger');
+      else if (t <= 10) el.classList.add('warning');
     }
 
     function togglePause() {
@@ -693,6 +731,7 @@
     // ── QUESTION RENDERING ─────────────────────────────────────
     function loadQuestion(index) {
       testState.currentQuestion = index;
+      testState.previewChoice   = null; // fresh question, no pending selection
       const q = testState.questions[index];
       if (!q) return;
 
@@ -706,10 +745,10 @@
       // Render choices
       renderChoices(q);
 
-      // Update nav buttons
-      document.getElementById('prev-btn').disabled = (index === 0);
+      // Adaptive flow is forward-only: Previous is permanently disabled.
+      document.getElementById('prev-btn').disabled = true;
       document.getElementById('next-btn').textContent =
-        (index === testState.totalQuestions - 1) ? 'Review & Submit' : 'Next →';
+        (index === testState.totalQuestions - 1) ? 'Finish →' : 'Next →';
 
       // Update flag button state
       const flagBtn = document.getElementById('flag-btn');
@@ -718,15 +757,18 @@
       flagBtn.style.color  = isFlagged ? 'var(--accent)' : '';
       flagBtn.setAttribute('aria-pressed', String(isFlagged));
 
-      // Refresh question map
+      // Badge shows the level for THIS question (set by the previous commit).
+      updateDifficultyBadge();
+
+      // Refresh question map + kick off the per-question countdown
       renderQuestionMap();
+      startTimer();
     }
 
     function renderChoices(question) {
       const list = document.getElementById('choices-list');
       list.innerHTML = '';
-      const savedAnswer = testState.answerMap[question.questionId];
-
+      // Forward-only flow: a fresh question starts with no selection.
       question.choices.forEach(choice => {
         const li = document.createElement('li');
 
@@ -736,12 +778,12 @@
         */
         li.innerHTML = `
           <button
-            class="choice-btn ${savedAnswer === choice.id ? 'selected' : ''}"
+            class="choice-btn"
             data-choice="${choice.id}"
             data-question-id="${question.questionId}"
             onclick="selectAnswer('${question.questionId}', '${choice.id}', this)"
             role="radio"
-            aria-checked="${savedAnswer === choice.id}"
+            aria-checked="false"
             aria-label="Choice ${choice.id}: ${choice.text}"
           >
             <span class="choice-letter" aria-hidden="true">${choice.id}</span>
@@ -756,16 +798,12 @@
     /**
      * selectAnswer(questionId, choiceId, element)
      * ─────────────────────────────────────────────
-     * Records the student's answer locally.
+     * Preview-only: highlights the chosen answer but does NOT commit.
+     * The answer is committed (scored + difficulty adjusted) when the
+     * student clicks Next, or automatically when the 30-second timer
+     * hits zero.
      *
-     * Integration Team: After storing locally, also call:
-     *   POST /api/sessions/answer
-     *   Body: { sessionId, questionId, choiceId, timestamp }
-     * This ensures partial credit and resumability.
-     *
-     * AI/Question Bank: After each answer, you may call
-     *   GET /api/questions/next?questionId=&correct=true|false
-     * to get the adaptively-selected next question.
+     * Integration Team: commit logic lives in commitAndAdvance().
      */
     function selectAnswer(questionId, choiceId, el) {
       // Deselect all choices for this question
@@ -774,24 +812,93 @@
         btn.setAttribute('aria-checked', 'false');
       });
 
-      // Select chosen answer
+      // Highlight selection
       el.classList.add('selected');
       el.setAttribute('aria-checked', 'true');
 
-      // Store in local answer map
-      testState.answerMap[questionId] = choiceId;
+      testState.previewChoice = choiceId;
+    }
 
-      // Persist to sessionStorage (DB Team: replace with API call)
+    // ── COMMIT & ADVANCE ───────────────────────────────────────
+    /**
+     * commitAndAdvance()
+     * ─────────────────────────────────────────────
+     * Scores the current question, records the path entry, adjusts
+     * difficulty, and moves to the next question (or submits on the
+     * last one). Called by Next and by the timer on expiry.
+     *
+     * If previewChoice is null (student ran out the clock or hit Next
+     * without selecting) the question is scored as wrong.
+     */
+    function commitAndAdvance() {
+      clearInterval(testState.timerInterval);
+
+      const idx    = testState.currentQuestion;
+      const q      = testState.questions[idx];
+      const choice = testState.previewChoice;
+      const correct = choice !== null && choice === q.correct;
+
+      // Record the path entry at the level this question was asked at,
+      // BEFORE we adjust for the next question.
+      testState.difficultyPath.push({ level: testState.currentDifficulty, correct });
+
+      testState.answerMap[q.questionId] = choice || '__TIMEOUT__';
       sessionStorage.setItem('answerMap', JSON.stringify(testState.answerMap));
 
-      console.log(`[Answer] Q:${questionId} → ${choiceId}`);
+      // Track total time spent (for the submit payload).
+      testState.totalTimeSpent += (QUESTION_TIME_LIMIT - Math.max(0, testState.timeRemaining));
 
-      // Update sidebar progress
+      // Adaptive adjustment for the NEXT question.
+      testState.currentDifficulty = correct
+        ? Math.min(3, testState.currentDifficulty + 1)
+        : Math.max(1, testState.currentDifficulty - 1);
+
+      renderDifficultyPath();
       updateProgress();
       renderQuestionMap();
+
+      const next = idx + 1;
+      if (next < testState.totalQuestions) {
+        loadQuestion(next);
+      } else {
+        submitTest();
+      }
+    }
+
+    // ── DIFFICULTY BADGE ───────────────────────────────────────
+    function updateDifficultyBadge() {
+      const badge = document.getElementById('difficulty-badge');
+      if (!badge) return;
+      const level = testState.currentDifficulty;
+      const labels  = { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' };
+      const classes = { 1: 'badge badge-slate', 2: 'badge badge-accent', 3: 'badge badge-success' };
+      badge.className   = classes[level];
+      badge.textContent = labels[level];
+    }
+
+    // ── DIFFICULTY PATH ────────────────────────────────────────
+    function renderDifficultyPath() {
+      const container = document.getElementById('difficulty-path-dots');
+      if (!container) return;
+      container.innerHTML = '';
+      testState.difficultyPath.forEach((entry, i) => {
+        const sizePx = entry.level === 1 ? 8 : entry.level === 2 ? 12 : 16;
+        const color  = entry.correct ? 'var(--success)' : 'var(--danger)';
+        const dot = document.createElement('span');
+        dot.style.display      = 'inline-block';
+        dot.style.width        = `${sizePx}px`;
+        dot.style.height       = `${sizePx}px`;
+        dot.style.borderRadius = '50%';
+        dot.style.background   = color;
+        dot.title = `Q${i + 1} — Level ${entry.level}, ${entry.correct ? 'correct' : 'wrong'}`;
+        dot.setAttribute('aria-label', dot.title);
+        container.appendChild(dot);
+      });
     }
 
     // ── QUESTION MAP ───────────────────────────────────────────
+    // In adaptive/forward-only mode the map is informational only —
+    // clicks are disabled so students can't revisit committed questions.
     function renderQuestionMap() {
       const mapEl = document.getElementById('question-map');
       mapEl.innerHTML = '';
@@ -807,8 +914,9 @@
         btn.dataset.status  = status;
         btn.dataset.questionNum = i + 1;
         btn.textContent     = i + 1;
-        btn.setAttribute('aria-label', `Go to question ${i + 1}, status: ${status}`);
-        btn.onclick         = () => loadQuestion(i);
+        btn.disabled        = true;
+        btn.setAttribute('aria-label', `Question ${i + 1}, status: ${status}`);
+        btn.title = 'Adaptive mode: committed questions cannot be revisited.';
         mapEl.appendChild(btn);
       });
     }
@@ -822,18 +930,19 @@
     }
 
     // ── NAVIGATION ─────────────────────────────────────────────
+    // Adaptive flow is strictly forward; Previous is disabled in the UI.
+    // The Next button now commits the current answer, adjusts difficulty,
+    // and advances (or submits on the last question).
     function navigateQuestion(direction) {
-      const next = testState.currentQuestion + direction;
-      if (next >= 0 && next < testState.totalQuestions) {
-        loadQuestion(next);
-      } else if (next >= testState.totalQuestions) {
-        openSubmitModal();
-      }
+      if (direction <= 0) return; // no going back
+      commitAndAdvance();
     }
 
     // ── PROGRESS ───────────────────────────────────────────────
+    // Reflect committed answers only — previewing a choice shouldn't bump
+    // the progress bar before the student hits Next.
     function updateProgress() {
-      const answered = Object.keys(testState.answerMap).length;
+      const answered = testState.difficultyPath.length;
       const total    = testState.totalQuestions;
       document.getElementById('answered-count').textContent = answered;
       document.getElementById('progress-fill').style.width  = `${(answered / total) * 100}%`;
@@ -883,7 +992,9 @@
         testId:    testState.testId,
         studentId: testState.studentId,
         answerMap: testState.answerMap,
-        timeTaken: (30 * 60) - testState.timeRemaining,
+        timeTaken: testState.totalTimeSpent,
+        difficultyPath:  testState.difficultyPath,
+        finalDifficulty: testState.currentDifficulty,
       };
 
       console.log('[Submit] Posting results:', payload);

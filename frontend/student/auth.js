@@ -193,4 +193,6 @@ window.clearSession = clearSession;
   } else {
     poll();
   }
+
+
 })();

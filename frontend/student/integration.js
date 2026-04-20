@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8080";
+//const API_BASE_URL = "http://localhost:8080"; //whatever the API base url turns out to be
 
 //for index.html (Login)
 async function handleLoginSubmit(event) {
@@ -10,7 +10,7 @@ async function handleLoginSubmit(event) {
         password: document.getElementById('password').value
     };
 
-    const response = await fetch('LOGIN_URL', {
+    const response = await fetch('LOGIN_URL', { // backend server that contains all login information
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData) 
@@ -36,36 +36,37 @@ async function startTest(testId) {
 }
 */
 
-// For results.html (Viewing Scores)
+// For results.html (Viewing Scores) *JUST DRAFT*
 async function showFinalScore() { 
     const resultId = sessionStorage.getItem('lastResultId'); 
 
     // getch results from api with the id entereed
-    const response = await fetch('API_URL');
+    const response = await fetch('API_URL'); // backend url that stores all student test info or session info
     
-    const scoreData = await response.json(); // use .json() to get the object back
+    const scoreData = await response.json(); 
     console.log("Student Score is: " + scoreData.score);
 
 }
 
-// next button
-async function getNextQuestion(difficulty) { 
-    console.log("Next button clicked!");
+// next button integration
+async function getNextQuestion(ID, level) { // currently variables set to t-1 and 1, specifics see line 542 of test.html
+    
+    console.log("Next button clicked!"); //make sure button click is connected to this method with console log
 
-    /*
-    const testData = {
-        sessionId: "TEST-SESSION-123", // be changed later when session storing is done
-        difficulty: 1                  // be changed later when difficulty leveling is done
+    
+    const testData = { 
+        sessionId: ID, // be changed later when session storing is done
+        difficulty: level // be changed later when difficulty leveling is done
     };
-    */
+    
 
     // Now send it to NextQuestionHandler.java
-    const response = await fetch('link', { // the link is the backend server for API logic and AI questions
+    const response = await fetch('link', { // hiiii West, the link is the backend server for API logic and AI questions 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(difficulty)
+        body: JSON.stringify(testData)
     });
 
-    const data = await response.json();
-    console.log("AI Question Received:", data.text);
+    const data = await response.json(); //wait for responses from java
+    console.log("AI Question Received:", data.text); // code currently doesn't change the interface, just logs results in console to make sure it works
 }

@@ -33,7 +33,8 @@ Once the backend is running, verify the connection to the Gemini API using `curl
 ```bash
 curl -X POST http://localhost:8080/api/chat \
   -H 'Content-Type: application/json' \
-  -d '{"message":"Explain derivatives simply"}'
+  -d '{"message":"Generate exactly 1 AP Computer Science A multiple-choice question. Difficulty level: 2 on a scale of 1 to 3. Topic: Java programming. Requirements: 4 answer choices labeled A, B, C, and D. Exactly 1 correct answer. Make it appropriate for a high school AP CSA student. Do not include markdown or extra explanation. Return valid JSON only in this format - not always answer A: {\"topic\":\"string\",\"text\":\"string\",\"choices\":[{\"id\":\"A\",\"text\":\"string\"},{\"id\":\"B\",\"text\":\"string\"},{\"id\":\"C\",\"text\":\"string\"},{\"id\":\"D\",\"text\":\"string\"}],\"correctChoice\":\"A\"}"}'
+
 ```
 
 ---

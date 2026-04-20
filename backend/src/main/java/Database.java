@@ -3,9 +3,8 @@ import java.sql.*;
 public class Database {
 
     private static final String URL =
-            "jdbc:postgresql://aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require";
+            "jdbc:postgresql://aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require";
 
-    // FIX: use consistent env var names for cloud deployment
     private static final String USER = System.getenv("DB_USER");
     private static final String PASS = System.getenv("DB_PASSWORD");
 
@@ -39,7 +38,7 @@ public class Database {
     }
 
     // ─────────────────────────────────────────────
-    // STUDENTS (unchanged logic but stable)
+    // STUDENTS
     // ─────────────────────────────────────────────
     public static long getOrCreateStudent(String name) {
 
@@ -73,7 +72,7 @@ public class Database {
     }
 
     // ─────────────────────────────────────────────
-    // SESSIONS (FIXED TO MATCH YOUR TABLE)
+    // SESSIONS
     // ─────────────────────────────────────────────
     public static long createSession(long studentId) {
 

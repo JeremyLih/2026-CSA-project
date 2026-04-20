@@ -6,6 +6,9 @@ public class Main {
 
     public static void main(String[] args) throws Exception {
 
+        //System.out.println("DB_USER=[" + System.getenv("DB_USER") + "]");
+        //System.out.println("DB_PASSWORD=[" + System.getenv("DB_PASSWORD") + "]");
+
         System.out.println("Server starting...");
 
         // Cloud Run provides PORT, fallback to 8080 for local testing
@@ -76,5 +79,12 @@ public class Main {
 
         server.start();
         System.out.println("Server running on port " + port);
+
+        //Test
+        Database.insertQuestion(
+                "Recursion",
+                100,
+                "{\"question\": \"What is recursion?\"}"
+        );
     }
 }

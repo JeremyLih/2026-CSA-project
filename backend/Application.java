@@ -12,7 +12,10 @@ public final class Application {
         Gemini gemini = new Gemini();
 
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        SessionStore sessionStore = new SessionStore();
         server.createContext("/api/chat", new ChatHandler(gemini));
+        server.createContext("/api/sessions/start", new StartSessionHandler(sessionStore));
+        server.createContext("/api/questions/next", new NextQuestionHandler(sessionStore, gemini));
         server.createContext("/health", exchange -> HttpResponses.sendJson(exchange, 200, "{\"status\":\"ok\"}"));
         server.setExecutor(Executors.newFixedThreadPool(8));
         server.start();

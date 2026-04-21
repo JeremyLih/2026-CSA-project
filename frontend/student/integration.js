@@ -1,72 +1,128 @@
-//const API_BASE_URL = "http://localhost:8080"; //whatever the API base url turns out to be
+const API_BASE_URL = "http://localhost:8080";
 
-//for index.html (Login)
+//
+// LOGIN
+// 
 async function handleLoginSubmit(event) {
-    event.preventDefault(); // stops the page from refreshing
-    
-    // grab the actual data from the input fields
+    event.preventDefault();
+
     const loginData = {
         studentId: document.getElementById('student-id').value,
         password: document.getElementById('password').value
     };
 
-    const response = await fetch('LOGIN_URL', { // backend server that contains all login information
+    const response = await fetch(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginData) 
+        body: JSON.stringify(loginData)
     });
-    
-    const data = await response.text();
-    console.log("Java replied: " + data);
+
+    const data = await response.json();
+    console.log("Login response:", data);
+
+    // store session info (important for Next Question)
+    sessionStorage.setItem("sessionId", data.sessionId);
 }
 
+// 
+// START TEST
+//
+async function startTest(testId) {
 
-/* For dashboard.html (Selecting a Test)
-async function startTest(testId) { 
     const testRequest = { id: testId };
 
-    const response = await fetch('START_URL', {
+    const response = await fetch(`${API_BASE_URL}/startTest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testRequest) 
+        body: JSON.stringify(testRequest)
     });
 
-    const data = await response.text(); // get the text answer from Java
-    console.log("Java replied: " + data);
-}
-*/
+    const data = await response.json();
+    console.log("Start test:", data);
 
-// For results.html (Viewing Scores) *JUST DRAFT*
-async function showFinalScore() { 
-    const resultId = sessionStorage.getItem('lastResultId'); 
-
-    // getch results from api with the id entereed
-    const response = await fetch('API_URL'); // backend url that stores all student test info or session info
-    
-    const scoreData = await response.json(); 
-    console.log("Student Score is: " + scoreData.score);
-
+    sessionStorage.setItem("sessionId", data.sessionId);
 }
 
-// next button integration
-async function getNextQuestion(ID, level) { // currently variables set to t-1 and 1, specifics see line 542 of test.html
-    
-    console.log("Next button clicked!"); //make sure button click is connected to this method with console log
+// 
+// RESULTS
+// 
+async function showFinalScore() {
 
-    
-    const testData = { 
-        sessionId: ID, // be changed later when session storing is done
-        difficulty: level // be changed later when difficulty leveling is done
+    const resultId = sessionStorage.getItem('lastResultId');
+
+    const response = await fetch(`${API_BASE_URL}/results/${resultId}`);
+
+    const scoreData = await response.json();
+
+    console.log("Student Score is:", scoreData.score);
+}
+
+//
+// NEXT QUESTION 
+// 
+async function getNextQuestion() {
+
+    console.log("Next button clicked!");
+
+    const sessionId = sessionStorage.getItem("sessionId");
+    const difficulty = sessionStorage.getItem("difficulty") || 2;
+
+    const testData = {
+        sessionId: sessionId,
+        difficulty: Number(difficulty)
     };
-    
 
-    // Now send it to NextQuestionHandler.java
-    const response = await fetch('link', { // hiiii West, the link is the backend server for API logic and AI questions 
+    const response = await fetch(`${API_BASE_URL}/nextQuestion`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json'
+        },
         body: JSON.stringify(testData)
     });
 
-    const data = await response.json(); //wait for responses from java
-    console.log("AI Question Received:", data.text); // code currently doesn't change the interface, just logs results in console to make sure it works
+    const data = await response.json();
+
+    console.log("Question received:", data);
+
+    // ── UPDATE QUESTION TEXT ──
+    document.getElementById("questionText").innerHTML = data.text;
+
+    // ── UPDATE CHOICES (IMPORTANT ADDITION) ──
+    const list = document.getElementById("choices-list");
+    list.innerHTML = "";
+
+    data.choices.forEach(choice => {
+        const li = document.createElement("li");
+
+        li.innerHTML = `
+            <button class="choice-btn"
+                    onclick="selectAnswer('${data.questionId}', '${choice.id}', this)">
+                <span class="choice-letter">${choice.id}</span>
+                <span>${choice.text}</span>
+            </button>
+        `;
+
+        list.appendChild(li);
+    });
+
+    // ── SAVE NEW DIFFICULTY ──
+    sessionStorage.setItem("difficulty", data.difficulty);
+}
+
+// 
+// SELECT ANSWER (needed for Next button flow)
+// 
+let selectedAnswer = null;
+
+function selectAnswer(questionId, choiceId, element) {
+
+    selectedAnswer = choiceId;
+
+    // remove old selection
+    document.querySelectorAll(".choice-btn").forEach(btn => {
+        btn.classList.remove("selected");
+    });
+
+    // highlight selected
+    element.classList.add("selected");
 }

@@ -809,6 +809,8 @@
         </div>
 
         <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+          <a href="dashboard.html" class="btn btn-outline" id="back-dashboard-btn">← Back to Dashboard</a>
+          <a href="history.html" class="btn btn-outline" id="back-history-btn">← Back to History</a>
           <button class="btn btn-outline" type="button" id="export-btn">Export PDF</button>
           <button class="btn btn-accent" type="button" id="share-btn">Share with Teacher</button>
         </div>
@@ -1152,13 +1154,50 @@
       return 'Needs Support';
     }
 
+    // TODO(DB team — Michael C. / Marwan / Jason): when a testId is present in
+    // the URL, replace the sessionStorage testHistory lookup below with
+    // GET /api/results/:id. When no testId is present, GET /api/results/latest
+    // can replace the lastResult read.
+    function loadParsedResult() {
+      const params = new URLSearchParams(window.location.search);
+      const requestedId = params.get('testId');
+      if (requestedId) {
+        try {
+          const historyRaw = sessionStorage.getItem('testHistory');
+          const history = historyRaw ? JSON.parse(historyRaw) : [];
+          const match = Array.isArray(history)
+            ? history.find(h => h && h.testId === requestedId)
+            : null;
+          if (match) {
+            return {
+              testId: match.testTemplateId || match.testId,
+              testName: match.testName,
+              studentId: match.studentId,
+              answerMap: match.answerMap,
+              timeTaken: match.timeTaken,
+              difficultyPath: match.difficultyPath,
+              finalDifficulty: match.finalDifficulty,
+              totalQuestions: match.totalQuestions,
+              correctCount: match.correctCount,
+              score: match.score,
+              questions: match.questionHistory
+            };
+          }
+        } catch (err) {
+          console.warn('Failed to load testHistory entry:', err);
+        }
+      }
+      const rawResult = sessionStorage.getItem('lastResult');
+      if (!rawResult) return null;
+      try { return JSON.parse(rawResult); } catch { return null; }
+    }
+
     function buildResultFromSession() {
       try {
         const rawStudent = sessionStorage.getItem('student');
-        const rawResult = sessionStorage.getItem('lastResult');
-        if (!rawResult) return null;
+        const parsedResult = loadParsedResult();
+        if (!parsedResult) return null;
 
-        const parsedResult = JSON.parse(rawResult);
         const parsedStudent = rawStudent ? JSON.parse(rawStudent) : {};
 
         const fallback = JSON.parse(JSON.stringify(DEMO_RESULT));

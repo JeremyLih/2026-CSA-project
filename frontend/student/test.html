@@ -1088,6 +1088,38 @@
         questions: reviewQuestions
       };
 
+      // TODO(DB team — Michael C. / Marwan / Jason): replace the sessionStorage
+      // testHistory write below with POST /api/results/submit so attempts are
+      // persisted server-side. history.html / results.html should then read via
+      // GET /api/results/history and GET /api/results/:id respectively.
+      const historyId = 'HIST-' + Date.now();
+      payload.historyId = historyId;
+
+      const historyEntry = {
+        testId: historyId,
+        testTemplateId: testState.testId,
+        testName,
+        subject: testName,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        score: payload.score,
+        correctCount,
+        totalQuestions: testState.totalQuestions,
+        finalDifficulty: testState.currentDifficulty,
+        timeTaken: testState.totalTimeSpent,
+        difficultyPath: testState.difficultyPath,
+        answerMap: testState.answerMap,
+        questionHistory: reviewQuestions
+      };
+
+      try {
+        const historyRaw = sessionStorage.getItem('testHistory');
+        const history = historyRaw ? JSON.parse(historyRaw) : [];
+        history.push(historyEntry);
+        sessionStorage.setItem('testHistory', JSON.stringify(history));
+      } catch (err) {
+        console.warn('[Submit] Could not append to testHistory:', err);
+      }
+
       console.log('[Submit] Posting results:', payload);
       // PLACEHOLDER: Simulate navigation to results
       sessionStorage.setItem('lastResult', JSON.stringify(payload));

@@ -1,3 +1,6 @@
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+
 import java.sql.*;
 
 public class Database {
@@ -5,8 +8,25 @@ public class Database {
     private static final String URL =
             "jdbc:postgresql://aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require";
 
-    private static final String USER = System.getenv("DB_USER");
-    private static final String PASS = System.getenv("DB_PASSWORD");
+    // ─────────────────────────────
+    // CONNECTION POOL
+    // ─────────────────────────────
+    private static final HikariDataSource pool;
+
+    static {
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl(URL);
+        config.setUsername(requireEnv("DB_USER"));
+        config.setPassword(requireEnv("DB_PASSWORD"));
+
+        config.setMaximumPoolSize(10);     // max open connections
+        config.setMinimumIdle(2);          // keep 2 warm at all times
+        config.setConnectionTimeout(3000); // fail fast if pool exhausted (ms)
+        config.setIdleTimeout(30000);      // close idle connections after 30s
+        config.setMaxLifetime(600000);     // recycle connections every 10 min
+
+        pool = new HikariDataSource(config);
+    }
 
     private static String requireEnv(String key) {
         String value = System.getenv(key);
@@ -17,7 +37,7 @@ public class Database {
     }
 
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL, USER, PASS);
+        return pool.getConnection();
     }
 
     // ─────────────────────────────
@@ -51,28 +71,20 @@ public class Database {
     // ─────────────────────────────
     public static long getOrCreateStudent(String name) {
 
-        try (Connection conn = getConnection()) {
+        // Single round trip instead of SELECT then INSERT
+        String sql = """
+                INSERT INTO students (name) VALUES (?)
+                ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+                RETURNING id
+                """;
 
-            PreparedStatement check = conn.prepareStatement(
-                    "SELECT id FROM students WHERE name = ?"
-            );
-            check.setString(1, name);
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            ResultSet rs = check.executeQuery();
-
-            if (rs.next()) {
-                return rs.getLong("id");
-            }
-
-            PreparedStatement insert = conn.prepareStatement(
-                    "INSERT INTO students (name) VALUES (?) RETURNING id"
-            );
-            insert.setString(1, name);
-
-            ResultSet inserted = insert.executeQuery();
-            inserted.next();
-
-            return inserted.getLong("id");
+            stmt.setString(1, name);
+            ResultSet rs = stmt.executeQuery();
+            rs.next();
+            return rs.getLong("id");
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -86,19 +98,17 @@ public class Database {
     public static long createSession(long studentId) {
 
         String sql = """
-        INSERT INTO sessions (student_id, current_difficulty, status)
-        VALUES (?, 'easy', 'active')
-        RETURNING id
-        """;
+                INSERT INTO sessions (student_id, current_difficulty, status)
+                VALUES (?, 'easy', 'active')
+                RETURNING id
+                """;
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, studentId);
-
             ResultSet rs = stmt.executeQuery();
             rs.next();
-
             return rs.getLong("id");
 
         } catch (SQLException e) {
@@ -111,10 +121,11 @@ public class Database {
     // CHAT MESSAGES (needed for Gemini memory)
     // ─────────────────────────────
     public static void saveMessage(long sessionId, String role, String content) {
+
         String sql = """
-            INSERT INTO messages (session_id, role, content)
-            VALUES (?, ?, ?)
-        """;
+                INSERT INTO messages (session_id, role, content)
+                VALUES (?, ?, ?)
+                """;
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -122,7 +133,6 @@ public class Database {
             stmt.setLong(1, sessionId);
             stmt.setString(2, role);
             stmt.setString(3, content);
-
             stmt.executeUpdate();
 
         } catch (SQLException e) {
@@ -131,12 +141,13 @@ public class Database {
     }
 
     public static String getSessionHistory(long sessionId) {
+
         String sql = """
-            SELECT role, content
-            FROM messages
-            WHERE session_id = ?
-            ORDER BY id ASC
-        """;
+                SELECT role, content
+                FROM messages
+                WHERE session_id = ?
+                ORDER BY id ASC
+                """;
 
         StringBuilder history = new StringBuilder();
 
@@ -144,7 +155,6 @@ public class Database {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setLong(1, sessionId);
-
             ResultSet rs = stmt.executeQuery();
 
             while (rs.next()) {

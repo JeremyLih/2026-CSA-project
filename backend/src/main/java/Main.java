@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import java.util.concurrent.Executors;
 
 public class Main {
 
@@ -24,15 +25,16 @@ public class Main {
 
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
 
+        // FIX 1: Don't block all requests on a single thread
+        server.setExecutor(Executors.newVirtualThreadPerTaskExecutor()); // requires Java 21+
+
         server.createContext("/api/health", exchange -> {
             try {
                 cors(exchange);
-
                 if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
                     exchange.sendResponseHeaders(204, -1);
                     return;
                 }
-
                 send(exchange, 200, "OK");
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -53,18 +55,14 @@ public class Main {
                     return;
                 }
 
-
-                //For testing only
-                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "10"));
-                int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "5"));
+                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "8"));
+                int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "1"));
 
                 String unitContext = getUnitContext(unit);
-
                 String prompt = buildPrompt(unitContext, difficulty);
-
                 String raw = gemini.generateReply(prompt);
 
-                GeneratedQuestion question = parseQuestion(raw, difficulty);
+                GeneratedQuestion question = shuffleChoices(parseQuestion(raw, difficulty));
 
                 Database.insertQuestion(
                         question.topic(),
@@ -109,10 +107,12 @@ public class Main {
 
                 int difficulty = session.currentDifficulty();
 
-                String prompt = buildPrompt("Java programming", difficulty);
+                // FIX 2: was passing raw "Java programming" string instead of real unit context
+                String unitContext = getUnitContext(session.currentUnit());
+                String prompt = buildPrompt(unitContext, difficulty);
                 String raw = gemini.generateReply(prompt);
 
-                GeneratedQuestion question = parseQuestion(raw, difficulty);
+                GeneratedQuestion question = shuffleChoices(parseQuestion(raw, difficulty));
                 session.setCurrentQuestion(question);
 
                 sendJson(exchange, 200, question);
@@ -137,7 +137,6 @@ public class Main {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setInt(1, unit);
-
             ResultSet rs = stmt.executeQuery();
 
             if (!rs.next()) {
@@ -177,16 +176,18 @@ public class Main {
                 - Stay strictly within AP CSA material in the context
 
                QUESTION STYLE RULES:
-                - DO NOT overuse \"What is the output of this code?\"
+                - DO NOT overuse \"What is the output of this code?\"-style questions
                 - AT MOST 25 percent of generated questions may be output-prediction style
                 - Prefer conceptual reasoning, logic tracing, and design-based questions
-                - Prefer questions involving:
+                - Preferred questions involve:
                   - algorithm reasoning
                   - edge cases
                   - debugging incorrect code
                   - comparing multiple implementations
                   - time/space reasoning (conceptual, not Big-O heavy)
                   - object-oriented behavior and interactions
+               - The question must test understanding of a specific concept from the unit
+               - The concept being tested should be inferable but not explicitly stated anywhere
 
                QUESTION VARIETY REQUIREMENT:
                 The question MUST be one of the following types:
@@ -230,7 +231,7 @@ public class Main {
 
                 Question difficulty is based on this proficiency scale:
                 DIFFICULTY RULES:
-                
+
                difficulty = 1:
                - single concept
                - no traps
@@ -251,9 +252,13 @@ public class Main {
                - includes subtle edge cases or misleading answer choices
                - requires tracing logic across multiple lines or methods
                - incorrect answers must be plausible
+               - The problem MUST include at least one non-obvious flaw, edge case, or interaction
+               - The correct answer MUST require identifying a subtle detail (not surface-level reading)
+               - The question MUST NOT be solvable by quick inspection
+               - The reasoning path should involve at least 2–3 logical steps
 
                difficulty = 5:
-               - highly complex, multi-layer reasoning
+               - REQUIRES highly complex, multi-layer reasoning that goes well beyond AP CSA content while remaining Java-based
                - combines multiple AP CSA topics
                - may include:
                  - nested logic interactions
@@ -261,46 +266,68 @@ public class Main {
                  - side effects or mutation
                  - non-obvious edge cases
                - answer choices must be VERY close and require deep understanding
-               - may go slightly beyond curriculum, but still Java-based
                - MUST take significant time for a student to solve
-               
+               - The problem MUST involve a hidden pitfall (e.g., off-by-one, mutation side effects, recursion boundary error, object aliasing)
+
                CREATE THE QUESTION BASED ON DIFFICULTY LEVEL %d.
 
-                RETURN: JSON_ONLY
+               RETURN: JSON_ONLY
                """.formatted(unitContext, difficulty);
+    }
+
+    private static GeneratedQuestion shuffleChoices(GeneratedQuestion q) {
+
+        java.util.List<GeneratedQuestion.Choice> shuffled =
+                new java.util.ArrayList<>(q.choices());
+        java.util.Collections.shuffle(shuffled);
+
+        // FIX 3: removed dead first newCorrect assignment; only one pass needed
+        String[] labels = {"A", "B", "C", "D"};
+        java.util.List<GeneratedQuestion.Choice> relabeled = new java.util.ArrayList<>();
+        String newCorrect = null;
+
+        for (int i = 0; i < shuffled.size(); i++) {
+            GeneratedQuestion.Choice c = shuffled.get(i);
+            String newId = labels[i];
+            if (c.id().equals(q.correctChoice())) {
+                newCorrect = newId;
+            }
+            relabeled.add(new GeneratedQuestion.Choice(newId, c.text()));
+        }
+
+        return new GeneratedQuestion(
+                q.questionId(),
+                q.topic(),
+                q.text(),
+                relabeled,
+                newCorrect,
+                q.difficulty()
+        );
     }
 
     private static GeneratedQuestion parseQuestion(String raw, int difficulty) {
 
         System.out.println("RAW GEMINI RESPONSE");
-        System.out.println("Difficulty: "+ difficulty);
+        System.out.println("Difficulty: " + difficulty);
         System.out.println(raw);
 
         String json = extractJson(raw);
         Object obj = gson.fromJson(json, Object.class);
-
         java.util.Map<?, ?> root = (java.util.Map<?, ?>) obj;
 
         String topic = require(root, "topic");
         String text = require(root, "text");
         String correct = require(root, "correctChoice");
 
-        Object choicesObj = root.get("choices");
-        java.util.List<?> list = (java.util.List<?>) choicesObj;
-
+        java.util.List<?> list = (java.util.List<?>) root.get("choices");
         if (list == null || list.size() != 4) {
             throw new IllegalArgumentException("Must have 4 choices");
         }
 
         java.util.List<GeneratedQuestion.Choice> choices = new java.util.ArrayList<>();
-
         for (Object c : list) {
             java.util.Map<?, ?> cm = (java.util.Map<?, ?>) c;
-
-            choices.add(new GeneratedQuestion.Choice(
-                    require(cm, "id"),
-                    require(cm, "text")
-            ));
+            choices.add(new GeneratedQuestion.Choice(require(cm, "id"), require(cm, "text")));
         }
 
         boolean valid = choices.stream().anyMatch(c -> c.id().equals(correct));
@@ -308,11 +335,7 @@ public class Main {
 
         return new GeneratedQuestion(
                 java.util.UUID.randomUUID().toString(),
-                topic,
-                text,
-                choices,
-                correct,
-                difficulty
+                topic, text, choices, correct, difficulty
         );
     }
 
@@ -324,13 +347,13 @@ public class Main {
         return s.trim();
     }
 
+    // FIX 4: was splitting on "=" which breaks values containing "="
     private static String getQueryParam(HttpExchange ex, String key, String def) {
         String q = ex.getRequestURI().getQuery();
         if (q == null) return def;
-
         for (String part : q.split("&")) {
             if (part.startsWith(key + "=")) {
-                return URLDecoder.decode(part.split("=")[1], StandardCharsets.UTF_8);
+                return URLDecoder.decode(part.substring(key.length() + 1), StandardCharsets.UTF_8);
             }
         }
         return def;
@@ -338,16 +361,13 @@ public class Main {
 
     private static String extractJson(String text) {
         if (text == null) throw new RuntimeException("Empty Gemini response");
-
         int start = text.indexOf("{");
         int end = text.lastIndexOf("}");
-
         if (start == -1 || end == -1 || end <= start) {
             System.out.println("RAW GEMINI OUTPUT");
             System.out.println(text);
             throw new RuntimeException("No JSON found in Gemini response");
         }
-
         return text.substring(start, end + 1);
     }
 

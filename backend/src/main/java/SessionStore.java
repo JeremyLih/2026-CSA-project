@@ -7,7 +7,7 @@ public final class SessionStore {
 
     public TestSession createSession(String studentId, String testId) {
         String sessionId = UUID.randomUUID().toString();
-        TestSession session = new TestSession(sessionId, studentId, testId, 2, 1, 5);
+        TestSession session = new TestSession(sessionId, studentId, testId, 2, 1, 5, 8);
         sessions.put(sessionId, session);
         return session;
     }

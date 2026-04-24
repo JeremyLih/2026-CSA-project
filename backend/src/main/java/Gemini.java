@@ -72,9 +72,16 @@ public class Gemini {
                 // 🔑 FIXED: real JSON parsing
                 String extracted = extractReply(body);
 
+                //Re-enable for final product
+                /*
                 if (extracted == null || extracted.isBlank()) {
                     System.out.println("Empty Gemini response, retrying...");
                     continue;
+                }*/
+
+                //Faster for testing/dev process
+                if (extracted == null || extracted.isBlank()) {
+                    throw new RuntimeException("Empty Gemini response");
                 }
 
                 return extracted;

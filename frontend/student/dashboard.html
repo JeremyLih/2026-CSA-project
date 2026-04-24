@@ -246,9 +246,9 @@
 
     <nav class="hide-mobile" aria-label="Main navigation">
       <a href="dashboard.html" class="active">Dashboard</a>
+      <a href="all_tests.html" data-action="nav-all-tests">All Tests</a>
       <a href="history.html" data-action="nav-history">Test History</a>
-      <a href="#" data-action="nav-results">My Results</a>
-      <a href="#" data-action="nav-help">Help</a>
+      <a href="help.html" data-action="nav-help">Help</a>
     </nav>
 
     <!-- User info — DB Team: replace placeholder text with real session data -->
@@ -287,37 +287,10 @@
         </div>
       </div>
 
-      <!-- Stats Strip -->
-      <!--
-        Data & Reporting Team: These four numbers should
-        be fetched from GET /api/student/stats
-      -->
-      <div class="stats-strip" data-widget="stats-strip">
-        <div class="stat-card">
-          <div class="stat-value" data-bind="tests-completed">12</div>
-          <div class="stat-label">Tests Completed</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" data-bind="avg-score">78%</div>
-          <div class="stat-label">Average Score</div>
-          <div class="stat-sub">↑ +4% this week</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" data-bind="streak">5</div>
-          <div class="stat-label">Day Streak</div>
-          <div class="stat-sub">Keep it going!</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" data-bind="adaptive-level">4</div>
-          <div class="stat-label">Adaptive Level</div>
-          <div class="stat-sub">Proficient</div>
-        </div>
-      </div>
-
       <!-- ── Available Tests ── -->
       <div class="section-heading">
         <h2>Available Tests</h2>
-        <a href="#" data-action="view-all-tests">View all →</a>
+        <a href="all_tests.html" data-action="view-all-tests">View all →</a>
       </div>
 
       <!--
@@ -457,7 +430,7 @@
       <!-- ── Recent Activity ── -->
       <div class="section-heading">
         <h2>Recent Activity</h2>
-        <a href="#" data-action="view-full-history">Full history →</a>
+        <a href="history.html" data-action="view-full-history">Full history →</a>
       </div>
 
       <!--

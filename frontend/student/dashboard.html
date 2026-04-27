@@ -511,8 +511,17 @@
         return;
       }
 
-      // Store context for test.html
       sessionStorage.setItem('activeTestId', testId);
+
+      // Map each test card to a topic string for the AI prompt
+      const topicMap = {
+        'TEST-001': 'sorting algorithms, merge sort, quicksort, and time complexity',
+        'TEST-002': 'data structures, arrays, ArrayLists, and 2D arrays in Java',
+        'TEST-003': 'object-oriented programming, inheritance, and polymorphism in Java',
+        'recommended': 'AP Computer Science A Java programming'
+      };
+      sessionStorage.setItem('testTopic', topicMap[testId] || 'AP Computer Science A Java programming');
+
       console.log('[Dashboard] Starting test:', testId);
       window.location.href = 'test.html';
     }

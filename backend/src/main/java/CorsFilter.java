@@ -1,6 +1,7 @@
 // CorsFilter.java — add this new file to your backend folder
 import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.HttpExchange;
+import java.io.IOException;
 
 public class CorsFilter extends Filter {
 

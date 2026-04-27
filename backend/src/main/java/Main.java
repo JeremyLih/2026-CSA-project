@@ -55,8 +55,9 @@ public class Main {
                     return;
                 }
 
-                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "8"));
-                int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "1"));
+                //For testing only
+                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "3"));
+                int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "3"));
 
                 String unitContext = getUnitContext(unit);
                 String prompt = buildPrompt(unitContext, difficulty);
@@ -105,15 +106,29 @@ public class Main {
                     return;
                 }
 
-                int difficulty = session.currentDifficulty();
+                int difficulty = session.data().currentDifficulty();
 
-                // FIX 2: was passing raw "Java programming" string instead of real unit context
-                String unitContext = getUnitContext(session.currentUnit());
+                String unitContext = getUnitContext(session.data().currentUnit());
                 String prompt = buildPrompt(unitContext, difficulty);
                 String raw = gemini.generateReply(prompt);
 
                 GeneratedQuestion question = shuffleChoices(parseQuestion(raw, difficulty));
-                session.setCurrentQuestion(question);
+
+                // ✔ ONLY FIX #1: update SessionData correctly
+                SessionData updated = new SessionData(
+                        session.data().currentUnit(),
+                        session.data().currentDifficulty(),
+                        question,
+                        System.currentTimeMillis(),
+                        session.data().correctCount(),
+                        session.data().incorrectCount(),
+                        session.data().status()
+                );
+
+                session.setData(updated);
+
+                // ✔ ONLY FIX #2: persist to Supabase
+                sessionStore.saveSession(session.sessionId(), session);
 
                 sendJson(exchange, 200, question);
 
@@ -176,7 +191,7 @@ public class Main {
                 - Stay strictly within AP CSA material in the context
 
                QUESTION STYLE RULES:
-                - DO NOT overuse \"What is the output of this code?\"-style questions
+                - DO NOT overuse "What is the output of this code?"-style questions
                 - AT MOST 25 percent of generated questions may be output-prediction style
                 - Prefer conceptual reasoning, logic tracing, and design-based questions
                 - Preferred questions involve:

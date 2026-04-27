@@ -45,21 +45,17 @@ public final class StartSessionHandler implements HttpHandler {
             TestSession session = sessionStore.createSession(studentId.trim(), testId.trim());
 
             String json = """
-                    {
-                      "sessionId":"%s",
-                      "studentId":"%s",
-                      "testId":"%s",
-                      "currentDifficulty":%d,
-                      "questionNumber":%d,
-                      "totalQuestions":%d
-                    }
-                    """.formatted(
-                    Json.escape(session.sessionId()),
-                    Json.escape(session.studentId()),
-                    Json.escape(session.testId()),
-                    session.currentDifficulty(),
-                    session.questionNumber(),
-                    session.totalQuestions()
+            {
+              "sessionId":"%s",
+              "studentId":"%s",
+              "testId":"%s",
+              "currentDifficulty":%d
+            }
+            """.formatted(
+                    session.sessionId(),
+                    session.studentId(),
+                    session.testId(),
+                    session.data().currentDifficulty()
             );
 
             HttpResponses.sendJson(exchange, 200, json);

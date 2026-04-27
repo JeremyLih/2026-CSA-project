@@ -56,8 +56,9 @@ public class Main {
                     return;
                 }
 
-                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "8"));
-                int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "1"));
+                //For testing only
+                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "3"));
+                int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "3"));
 
                 String unitContext = getUnitContext(unit);
                 String prompt = buildPrompt(unitContext, difficulty);
@@ -106,17 +107,99 @@ public class Main {
                     return;
                 }
 
-                int difficulty = session.currentDifficulty();
+                int difficulty = session.data().currentDifficulty();
 
-                // FIX 2: was passing raw "Java programming" string instead of real unit context
-                String unitContext = getUnitContext(session.currentUnit());
+                String unitContext = getUnitContext(session.data().currentUnit());
                 String prompt = buildPrompt(unitContext, difficulty);
                 String raw = gemini.generateReply(prompt);
 
                 GeneratedQuestion question = shuffleChoices(parseQuestion(raw, difficulty));
-                session.setCurrentQuestion(question);
+
+                // ✔ ONLY FIX #1: update SessionData correctly
+                SessionData updated = new SessionData(
+                        session.data().currentUnit(),
+                        session.data().currentDifficulty(),
+                        question,
+                        System.currentTimeMillis(),
+                        session.data().correctCount(),
+                        session.data().incorrectCount(),
+                        session.data().status()
+                );
+
+                session.setData(updated);
+
+                // ✔ ONLY FIX #2: persist to Supabase
+                sessionStore.saveSession(session.sessionId(), session);
 
                 sendJson(exchange, 200, question);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
+        server.createContext("/api/start-session", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                java.util.Map<?, ?> req = gson.fromJson(body, java.util.Map.class);
+
+                String studentId = (String) req.get("studentId");
+                String testId = (String) req.get("testId");
+
+                TestSession session = sessionStore.createSession(studentId, testId);
+
+                sendJson(exchange, 200, session);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
+        server.createContext("/api/resume-session", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                java.util.Map<?, ?> req = gson.fromJson(body, java.util.Map.class);
+
+                String sessionId = (String) req.get("sessionId");
+
+                TestSession session = sessionStore.getSession(sessionId);
+
+                if (session == null) {
+                    sendJson(exchange, 404, new ErrorResponse("Session not found"));
+                    return;
+                }
+
+                sendJson(exchange, 200, session);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -177,7 +260,7 @@ public class Main {
                 - Stay strictly within AP CSA material in the context
 
                QUESTION STYLE RULES:
-                - DO NOT overuse \"What is the output of this code?\"-style questions
+                - DO NOT overuse "What is the output of this code?"-style questions
                 - AT MOST 25 percent of generated questions may be output-prediction style
                 - Prefer conceptual reasoning, logic tracing, and design-based questions
                 - Preferred questions involve:
@@ -392,7 +475,7 @@ public class Main {
     }
 
     static class SessionRequest {
-        long sessionId;
+        String sessionId;
     }
 
     static class ErrorResponse {

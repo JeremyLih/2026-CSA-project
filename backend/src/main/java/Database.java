@@ -43,7 +43,7 @@ public class Database {
 
     // ─────────────────────────────
     // QUESTIONS
-    // ─────────────────────────────
+    // ─────────────────────────────km
     public static void insertQuestion(String topic, long difficulty, String question, String answersjson, String correct_answer) {
 
         String sql = """

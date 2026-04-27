@@ -140,6 +140,74 @@ public class Main {
             }
         });
 
+        server.createContext("/api/start-session", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                java.util.Map<?, ?> req = gson.fromJson(body, java.util.Map.class);
+
+                String studentId = (String) req.get("studentId");
+                String testId = (String) req.get("testId");
+
+                TestSession session = sessionStore.createSession(studentId, testId);
+
+                sendJson(exchange, 200, session);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
+        server.createContext("/api/resume-session", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                java.util.Map<?, ?> req = gson.fromJson(body, java.util.Map.class);
+
+                String sessionId = (String) req.get("sessionId");
+
+                TestSession session = sessionStore.getSession(sessionId);
+
+                if (session == null) {
+                    sendJson(exchange, 404, new ErrorResponse("Session not found"));
+                    return;
+                }
+
+                sendJson(exchange, 200, session);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
         server.start();
         System.out.println("Server running on port " + port);
     }
@@ -406,7 +474,7 @@ public class Main {
     }
 
     static class SessionRequest {
-        long sessionId;
+        String sessionId;
     }
 
     static class ErrorResponse {

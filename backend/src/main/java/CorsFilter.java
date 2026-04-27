@@ -3,6 +3,8 @@ import com.sun.net.httpserver.Filter;
 import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 
+import java.io.IOException;
+
 public class CorsFilter extends Filter {
 
     @Override

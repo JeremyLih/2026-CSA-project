@@ -14,8 +14,12 @@ public final class Application {
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
         SessionStore sessionStore = new SessionStore();
         var chatContext = server.createContext("/api/chat", new ChatHandler(gemini));
-        chatContext.getFilters().add(new CorsFilter());        server.createContext("/api/sessions/start", new StartSessionHandler(sessionStore));
-        server.createContext("/api/questions/next", new NextQuestionHandler(sessionStore, gemini));
+        chatContext.getFilters().add(new CorsFilter());        
+        var sessionsContext = server.createContext("/api/sessions/start", new StartSessionHandler(sessionStore));
+        sessionsContext.getFilters().add(new CorsFilter());
+
+        var questionsContext = server.createContext("/api/questions/next", new NextQuestionHandler(sessionStore, gemini));
+        questionsContext.getFilters().add(new CorsFilter());
         server.createContext("/health", exchange -> HttpResponses.sendJson(exchange, 200, "{\"status\":\"ok\"}"));
         server.setExecutor(Executors.newFixedThreadPool(8));
         server.start();

@@ -47,7 +47,7 @@ public class Database {
 
     // ─────────────────────────────
     // QUESTIONS
-    // ─────────────────────────────km
+    // ─────────────────────────────
     public static void insertQuestion(String topic, long difficulty, String question, String answersjson, String correct_answer) {
 
         String sql = """
@@ -87,31 +87,6 @@ public class Database {
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
             stmt.setString(1, name);
-            ResultSet rs = stmt.executeQuery();
-            rs.next();
-            return rs.getLong("id");
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return -1;
-        }
-    }
-
-    // ─────────────────────────────
-    // SESSIONS
-    // ─────────────────────────────
-    public static long createSession(long studentId) {
-
-        String sql = """
-                INSERT INTO sessions (student_id, current_difficulty, status)
-                VALUES (?, 'easy', 'active')
-                RETURNING id
-                """;
-
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setLong(1, studentId);
             ResultSet rs = stmt.executeQuery();
             rs.next();
             return rs.getLong("id");

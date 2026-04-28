@@ -100,24 +100,36 @@ public class Main {
                 String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
                 SessionRequest req = gson.fromJson(body, SessionRequest.class);
 
-                TestSession session = sessionStore.getSession(String.valueOf(req.sessionId));
+                TestSession session = sessionStore.getSession(req.sessionId);
                 if (session == null) {
                     sendJson(exchange, 404, new ErrorResponse("Session not found"));
                     return;
                 }
 
-                int difficulty = session.data().currentDifficulty();
+                int difficulty = req.difficulty != null
+                        ? req.difficulty
+                        : session.data().currentDifficulty();
+                int unit = req.unit != null
+                        ? req.unit
+                        : session.data().currentUnit();
 
-                String unitContext = getUnitContext(session.data().currentUnit());
+                String unitContext = getUnitContext(unit);
                 String prompt = buildPrompt(unitContext, difficulty);
                 String raw = gemini.generateReply(prompt);
 
                 GeneratedQuestion question = shuffleChoices(parseQuestion(raw, difficulty));
 
-                // ✔ ONLY FIX #1: update SessionData correctly
+                Database.insertQuestion(
+                        question.topic(),
+                        question.difficulty(),
+                        question.text(),
+                        gson.toJson(question.choices()),
+                        question.correctChoice()
+                );
+
                 SessionData updated = new SessionData(
-                        session.data().currentUnit(),
-                        session.data().currentDifficulty(),
+                        unit,
+                        difficulty,
                         question,
                         System.currentTimeMillis(),
                         session.data().correctCount(),
@@ -126,8 +138,6 @@ public class Main {
                 );
 
                 session.setData(updated);
-
-                // ✔ ONLY FIX #2: persist to Supabase
                 sessionStore.saveSession(session.sessionId(), session);
 
                 sendJson(exchange, 200, question);
@@ -222,26 +232,46 @@ public class Main {
             stmt.setInt(1, unit);
             ResultSet rs = stmt.executeQuery();
 
-            if (!rs.next()) {
-                throw new RuntimeException("Unit not found: " + unit);
+            if (rs.next()) {
+                String title = rs.getString("title");
+                String content = rs.getString("content");
+
+                return """
+                        AP CSA CURRICULUM CONTEXT
+
+                        UNIT: %d
+                        TITLE: %s
+
+                        CONTENT:
+                        %s
+                        """.formatted(unit, title, content);
             }
 
-            String title = rs.getString("title");
-            String content = rs.getString("content");
-
-            return """
-                    AP CSA CURRICULUM CONTEXT
-
-                    UNIT: %d
-                    TITLE: %s
-
-                    CONTENT:
-                    %s
-                    """.formatted(unit, title, content);
+            System.err.println("Unit " + unit + " not found in ap_csa_units; using fallback context.");
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch unit from Supabase", e);
+            System.err.println("Failed to fetch unit " + unit + " from Supabase: " + e.getMessage());
         }
+
+        // Fallback so question generation still proceeds when the units table
+        // is unseeded or unreachable.
+        return """
+                AP CSA CURRICULUM CONTEXT
+
+                UNIT: %d (fallback — unit data unavailable)
+                TITLE: General AP Computer Science A
+
+                CONTENT:
+                Standard AP Computer Science A topics:
+                - Primitive types and using objects
+                - Boolean expressions and if statements
+                - Iteration (for, while)
+                - Writing classes (instance variables, constructors, methods)
+                - Array and ArrayList
+                - 2D Array
+                - Inheritance
+                - Recursion
+                """.formatted(unit);
     }
 
     private static String buildPrompt(String unitContext, int difficulty) {
@@ -475,6 +505,8 @@ public class Main {
 
     static class SessionRequest {
         String sessionId;
+        Integer difficulty;
+        Integer unit;
     }
 
     static class ErrorResponse {

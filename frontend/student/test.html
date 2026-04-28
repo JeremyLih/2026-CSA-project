@@ -602,6 +602,7 @@
     const testState = {
       testId:          sessionStorage.getItem('activeTestId') || 'TEST-001',
       studentId:       sessionStorage.getItem('studentId')    || 'STU-DEMO',
+      sessionId:       sessionStorage.getItem('sessionId')    || null,
       currentQuestion: 0,       // 0-based index
       totalQuestions:  15,      // overridden when questions load
       timeRemaining:   QUESTION_TIME_LIMIT, // seconds left on CURRENT question
@@ -633,72 +634,88 @@
       previewChoice:     null,
     };
 
-    // ── PLACEHOLDER QUESTIONS ──────────────────────────────────
-    // AI/Question Bank Team: DELETE these and replace with
-    // a real call to GET /api/questions?testId=&studentId=
-    // The data shape must match QUESTION_SCHEMA in the header.
-    const PLACEHOLDER_QUESTIONS = [
-      {
-        questionId: 'Q-001',
-        text: 'What is the time complexity of the following merge sort implementation in the average case?<pre>void mergeSort(int[] arr, int l, int r) {\n  if (l &lt; r) {\n    int m = (l + r) / 2;\n    mergeSort(arr, l, m);\n    mergeSort(arr, m + 1, r);\n    merge(arr, l, m, r);\n  }\n}</pre>',
+    const API_BASE = 'http://localhost:8080';
+
+    // Each entry stays as a placeholder until the backend delivers a real
+    // question for that index — populated lazily by fetchQuestionInto().
+    function makePendingQuestion(index) {
+      return {
+        questionId: `Q-PENDING-${index + 1}`,
+        text: '',
+        choices: [],
+        correct: null
+      };
+    }
+
+    function makeFallbackQuestion(index) {
+      return {
+        questionId: `Q-FALLBACK-${index + 1}`,
+        text: 'Error loading question. Please try again.',
         choices: [
-          { id: 'A', text: 'O(n) — linear time' },
-          { id: 'B', text: 'O(n log n) — linearithmic time' },
-          { id: 'C', text: 'O(n²) — quadratic time' },
-          { id: 'D', text: 'O(log n) — logarithmic time' },
+          { id: 'A', text: 'Retry' },
+          { id: 'B', text: 'Retry' },
+          { id: 'C', text: 'Retry' },
+          { id: 'D', text: 'Retry' }
         ],
-        correct: 'B'
-      },
-      {
-        questionId: 'Q-002',
-        text: 'Which sorting algorithm is most efficient when the input array is already nearly sorted?',
-        choices: [
-          { id: 'A', text: 'Merge Sort' },
-          { id: 'B', text: 'Quick Sort (with random pivot)' },
-          { id: 'C', text: 'Insertion Sort' },
-          { id: 'D', text: 'Heap Sort' },
-        ],
-        correct: 'C'
-      },
-      {
-        questionId: 'Q-003',
-        text: 'What is the worst-case space complexity of an in-place Quicksort due to recursion stack depth?',
-        choices: [
-          { id: 'A', text: 'O(1)' },
-          { id: 'B', text: 'O(log n)' },
-          { id: 'C', text: 'O(n)' },
-          { id: 'D', text: 'O(n²)' },
-        ],
-        correct: 'C'
-      },
-      // PLACEHOLDER: Add more or replace with API call
-      ...Array.from({ length: 12 }, (_, i) => ({
-        questionId: `Q-${String(i + 4).padStart(3, '0')}`,
-        text: `[AI-generated question ${i + 4} — Adaptive Test Engine will populate this from the Question Bank API. The difficulty will be adjusted based on your previous answers.]`,
-        choices: [
-          { id: 'A', text: 'Answer choice A (placeholder)' },
-          { id: 'B', text: 'Answer choice B (placeholder)' },
-          { id: 'C', text: 'Answer choice C (placeholder)' },
-          { id: 'D', text: 'Answer choice D (placeholder)' },
-        ],
-        correct: 'B'
-      }))
-    ];
+        correct: 'A'
+      };
+    }
+
+    // Calls /api/next-question and writes the result into questions[index].
+    // Throws on network/HTTP failure so callers can apply a fallback.
+    async function fetchQuestionInto(index) {
+      const response = await fetch(`${API_BASE}/api/next-question`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: testState.sessionId,
+          difficulty: testState.currentDifficulty
+        })
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      testState.questions[index] = {
+        questionId: data.questionId || `Q-AI-${index + 1}`,
+        text: data.text,
+        choices: data.choices,
+        correct: data.correctChoice
+      };
+    }
 
     // ── INIT ───────────────────────────────────────────────────
-    window.addEventListener('DOMContentLoaded', () => {
-      // PLACEHOLDER: Replace with real API fetch
-      // Integration Team: GET /api/questions?testId={testState.testId}
-      testState.questions      = PLACEHOLDER_QUESTIONS;
-      testState.totalQuestions = testState.questions.length;
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Pre-fill 15 empty slots — real questions stream in one per Next click.
+      testState.questions = Array.from(
+        { length: testState.totalQuestions },
+        (_, i) => makePendingQuestion(i)
+      );
 
+      document.getElementById('total-count').textContent = testState.totalQuestions;
       renderQuestionMap();
       updateDifficultyBadge();
       renderDifficultyPath();
-      loadQuestion(0); // starts the per-question timer itself
 
-      // Update total count display
-      document.getElementById('total-count').textContent = testState.totalQuestions;
+      try {
+        const startResp = await fetch(`${API_BASE}/api/start-session`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            studentId: testState.studentId,
+            testId: testState.testId
+          })
+        });
+        if (!startResp.ok) throw new Error(`HTTP ${startResp.status}`);
+        const session = await startResp.json();
+        testState.sessionId = session.sessionId;
+        sessionStorage.setItem('sessionId', testState.sessionId);
+
+        await fetchQuestionInto(0);
+      } catch (err) {
+        console.error('Failed to start test session:', err);
+        testState.questions[0] = makeFallbackQuestion(0);
+      }
+
+      loadQuestion(0); // starts the per-question timer itself
     });
 
     // ── PER-QUESTION TIMER ─────────────────────────────────────
@@ -891,44 +908,10 @@
         document.getElementById('next-btn').disabled = true;
 
         try {
-          const response = await fetch('http://localhost:8080/api/questions/next', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-              sessionId: sessionStorage.getItem('sessionId') || testState.studentId,
-              difficulty: testState.currentDifficulty,
-              index: next
-            })
-          });
-
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-          const data = await response.json();
-
-          const newQuestion = {
-            questionId: `Q-AI-${next + 1}`,
-            text: data.text,
-            choices: data.choices,
-            correct: data.correctChoice
-          };
-
-          testState.questions[next] = newQuestion;
-
+          await fetchQuestionInto(next);
         } catch (err) {
           console.error('Next question fetch failed:', err);
-
-          // fallback so app doesn't break
-          testState.questions[next] = {
-            questionId: `Q-FALLBACK-${next + 1}`,
-            text: "Error loading question. Please try again.",
-            choices: [
-              { id: 'A', text: 'Retry' },
-              { id: 'B', text: 'Retry' },
-              { id: 'C', text: 'Retry' },
-              { id: 'D', text: 'Retry' }
-            ],
-            correct: 'A'
-          };
+          testState.questions[next] = makeFallbackQuestion(next);
         }
 
         document.getElementById('next-btn').disabled = false;

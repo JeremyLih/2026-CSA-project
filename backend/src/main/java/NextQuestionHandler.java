@@ -43,8 +43,11 @@ public final class NextQuestionHandler implements HttpHandler {
                 return;
             }
 
-            // Just log the sessionId, don't block on it
-            System.out.println("Question request for session: " + sessionId);
+            TestSession session = sessionStore.getSession(sessionId);
+            if (session == null) {
+                HttpResponses.sendJson(exchange, 404, HttpResponses.error("Session not found."));
+                return;
+            }
 
             GeneratedQuestion question = GeminiQuestion.generate(gemini, difficulty);
 

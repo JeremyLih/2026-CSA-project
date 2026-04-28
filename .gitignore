@@ -2,3 +2,5 @@
 .DS_Store
 backend/out
 backend/.env
+target/
+*.class

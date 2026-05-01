@@ -625,7 +625,7 @@
     // currentDifficulty — 1 Beginner, 2 Intermediate, 3 Advanced.
     // Adjusted after each committed answer: +1 on correct (cap 3),
     // -1 on wrong or timeout (floor 1).
-    currentDifficulty: 2,
+    currentDifficulty: 3,
     // difficultyPath — one entry per COMMITTED answer, in order.
     // Rendered as dots at the bottom of the question panel.
     difficultyPath:    [],    // [{ level: 1..3, correct: boolean }]
@@ -883,8 +883,8 @@
 
     // adjust difficulty
     testState.currentDifficulty = correct
-            ? Math.min(3, testState.currentDifficulty + 1)
-            : Math.max(1, testState.currentDifficulty - 1);
+      ? Math.min(5, testState.currentDifficulty + 1)
+      : Math.max(1, testState.currentDifficulty - 1);
 
     renderDifficultyPath();
     updateProgress();
@@ -924,9 +924,8 @@
     const badge = document.getElementById('difficulty-badge');
     if (!badge) return;
     const level = testState.currentDifficulty;
-    const labels  = { 1: 'Beginner', 2: 'Intermediate', 3: 'Advanced' };
-    const classes = { 1: 'badge badge-slate', 2: 'badge badge-accent', 3: 'badge badge-success' };
-    badge.className   = classes[level];
+    const labels  = { 1: 'Emerging', 2: 'Developing', 3: 'Proficient', 4: 'Extending', 5: 'Beyond' };
+    const classes = { 1: 'badge badge-slate', 2: 'badge badge-slate', 3: 'badge badge-accent', 4: 'badge badge-success', 5: 'badge badge-success' };badge.className   = classes[level];
     badge.textContent = labels[level];
   }
 
@@ -936,8 +935,7 @@
     if (!container) return;
     container.innerHTML = '';
     testState.difficultyPath.forEach((entry, i) => {
-      const sizePx = entry.level === 1 ? 8 : entry.level === 2 ? 12 : 16;
-      const color  = entry.correct ? 'var(--success)' : 'var(--danger)';
+      const sizePx = entry.level === 1 ? 6 : entry.level === 2 ? 8 : entry.level === 3 ? 11 : entry.level === 4 ? 14 : 17;      const color  = entry.correct ? 'var(--success)' : 'var(--danger)';
       const dot = document.createElement('span');
       dot.style.display      = 'inline-block';
       dot.style.width        = `${sizePx}px`;

@@ -18,7 +18,6 @@ public class Main {
     public static void main(String[] args) throws Exception {
 
         System.out.println("Server starting...");
-        Database.printAllQuestions();
 
         int port = 8080;
         String portEnv = System.getenv("PORT");

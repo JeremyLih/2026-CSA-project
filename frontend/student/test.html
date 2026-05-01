@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="style.css" />
   <script src="auth.js"></script>
   <script>
-    // Session guard: bounce to login if no session.
-    // Runs before <body> paints so unauthorized users never see the test.
     (function () {
       const session = window.requireSession && window.requireSession();
       if (session && session.student) {
@@ -17,47 +15,7 @@
     })();
   </script>
 
-  <!--
-    test.html — Core Testing Environment
-    ─────────────────────────────────────────────────────────────
-    PURPOSE   : Distraction-free test UI. Renders one question
-                at a time. Tracks student answers locally, then
-                submits the full answer set at the end.
-    GROUPS    :
-      AI/Question Bank: Questions are loaded via
-        GET /api/questions/next?testId={id}&studentId={id}&level={n}
-        Response shape expected: see QUESTION_SCHEMA comment below.
-      Front/Back Integration: Wire up submitAnswer() and
-        submitTest() to your endpoints.
-      DB/Session Team: Session ID must be active before
-        this page loads. Store partial answers on each
-        "Next" click in case of disconnect.
-      Data & Reporting: On test completion, POST the full
-        answerMap to /api/results/submit
-    ─────────────────────────────────────────────────────────────
-
-    QUESTION_SCHEMA (expected from AI team):
-    {
-      "questionId": "Q-042",
-      "questionNumber": 3,
-      "totalQuestions": 15,
-      "subject": "algorithms",
-      "difficulty": 3,
-      "text": "What is the time complexity of merge sort?",
-      "type": "multiple-choice",  // or "free-response"
-      "choices": [
-        { "id": "A", "text": "O(n)" },
-        { "id": "B", "text": "O(n log n)" },
-        { "id": "C", "text": "O(n²)" },
-        { "id": "D", "text": "O(log n)" }
-      ],
-      "correct": "B",             // AI team: required for adaptive scoring
-      "hint": "Think about the divide step."  // optional
-    }
-  -->
-
   <style>
-    /* ── Test page: no distractions ── */
     body {
       background: var(--off-white);
       display: flex;
@@ -65,7 +23,6 @@
       min-height: 100vh;
     }
 
-    /* Focused test header (no nav links) */
     .test-header {
       background: var(--navy);
       border-bottom: 2px solid var(--accent);
@@ -88,7 +45,6 @@
     }
     .test-header .test-title span { color: var(--slate-light); font-weight: 400; }
 
-    /* ── TIMER ── */
     .timer-block {
       display: flex;
       align-items: center;
@@ -118,115 +74,21 @@
 
     .header-actions { display: flex; gap: 10px; align-items: center; }
 
-    /* ── MAIN TEST LAYOUT: sidebar + question area ── */
+    /* Full width — no sidebar */
     .test-body {
       flex: 1;
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 1fr;
       grid-template-rows: 1fr auto;
       gap: 0;
-      max-width: 1200px;
+      max-width: 900px;
       margin: 0 auto;
       width: 100%;
       padding: 24px;
       gap: 24px;
     }
 
-    /* ── QUESTION MAP SIDEBAR ── */
-    .sidebar {
-      grid-row: 1 / 3;
-      background: var(--white);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px;
-      box-shadow: var(--shadow-sm);
-      align-self: start;
-      position: sticky;
-      top: 80px;
-    }
-
-    .sidebar h3 {
-      font-size: 0.82rem;
-      text-transform: uppercase;
-      letter-spacing: 0.7px;
-      color: var(--slate);
-      margin-bottom: 14px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    /* Question map grid */
-    .question-map {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-
-    /*
-      Each button in the question map represents one question.
-      data-question-num  — the question number (1-based)
-      data-status        — "unanswered" | "answered" | "flagged" | "current"
-    */
-    .q-map-btn {
-      width: 100%;
-      aspect-ratio: 1;
-      border: 1.5px solid var(--border);
-      border-radius: 5px;
-      background: var(--white);
-      color: var(--navy);
-      font-size: 0.78rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      font-family: var(--font-body);
-    }
-    .q-map-btn:hover { border-color: var(--navy); background: var(--off-white); }
-    .q-map-btn[data-status="current"]    { background: var(--navy); color: var(--white); border-color: var(--navy); }
-    .q-map-btn[data-status="answered"]   { background: #d4edda; border-color: var(--success); color: var(--success); }
-    .q-map-btn[data-status="flagged"]    { background: #fef9e7; border-color: var(--accent);  color: #7d6009; }
-    .q-map-btn[data-status="unanswered"] { background: var(--white); }
-
-    /* Legend */
-    .map-legend {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      margin-top: 4px;
-    }
-    .map-legend .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.75rem;
-      color: var(--slate);
-    }
-    .legend-dot {
-      width: 12px; height: 12px;
-      border-radius: 3px;
-      border: 1.5px solid;
-      flex-shrink: 0;
-    }
-    .legend-dot.current    { background: var(--navy);  border-color: var(--navy);    }
-    .legend-dot.answered   { background: #d4edda;       border-color: var(--success); }
-    .legend-dot.flagged    { background: #fef9e7;       border-color: var(--accent);  }
-    .legend-dot.unanswered { background: var(--white);  border-color: var(--border);  }
-
-    /* Progress summary in sidebar */
-    .sidebar-progress {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-    }
-    .sidebar-progress .prog-label {
-      font-size: 0.75rem;
-      color: var(--slate);
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-    }
-
-    /* ── QUESTION PANEL ── */
+    /* QUESTION PANEL */
     .question-panel {
       background: var(--white);
       border: 1px solid var(--border);
@@ -253,12 +115,6 @@
       letter-spacing: 0.5px;
     }
 
-    .question-actions-top {
-      display: flex;
-      gap: 8px;
-    }
-
-    /* Question text */
     .question-text {
       font-size: 1.1rem;
       color: var(--navy);
@@ -267,7 +123,6 @@
       font-weight: 400;
     }
 
-    /* Code block inside question (for CS problems) */
     .question-text pre {
       background: var(--navy);
       color: #a8ff78;
@@ -280,7 +135,6 @@
       border-left: 3px solid var(--accent);
     }
 
-    /* ── ANSWER CHOICES ── */
     .choices-list {
       list-style: none;
       display: flex;
@@ -289,16 +143,6 @@
       flex: 1;
     }
 
-    /*
-      INTEGRATION POINT (Front/Back Integration Team)
-      ─────────────────────────────────────────────────
-      Each choice button has:
-        data-choice="A|B|C|D"   — the answer identifier
-        data-question-id        — parent question ID
-      When selected, call selectAnswer(questionId, choiceId).
-      The integration layer should record the answer and
-      potentially call GET /api/questions/next for adaptive routing.
-    */
     .choice-btn {
       display: flex;
       align-items: flex-start;
@@ -317,7 +161,6 @@
       line-height: 1.5;
     }
     .choice-btn:hover { border-color: var(--navy); background: var(--off-white); }
-
     .choice-btn.selected {
       border-color: var(--navy);
       background: #e8edf5;
@@ -340,7 +183,6 @@
     .choice-btn:hover    .choice-letter { border-color: var(--navy); color: var(--navy); }
     .choice-btn.selected .choice-letter { background: var(--navy); border-color: var(--navy); color: var(--white); }
 
-    /* ── NAVIGATION BAR (below question) ── */
     .question-nav {
       display: flex;
       align-items: center;
@@ -352,7 +194,6 @@
 
     .nav-left, .nav-right { display: flex; gap: 10px; }
 
-    /* ── LOADING STATE ── */
     .question-loading {
       display: flex;
       flex-direction: column;
@@ -364,46 +205,26 @@
       font-size: 0.9rem;
     }
 
-    /* ── SUBMIT CONFIRM MODAL ── */
     .modal h2 { margin-bottom: 8px; }
     .modal p  { color: var(--slate); margin-bottom: 20px; }
     .modal .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
     .unanswered-warning { color: var(--danger); font-weight: 600; font-size: 0.88rem; margin-bottom: 16px; }
 
-    /* Responsive: stack on small screens */
     @media (max-width: 860px) {
-      .test-body {
-        grid-template-columns: 1fr;
-        padding: 12px;
-      }
-      .sidebar {
-        grid-row: auto;
-        position: static;
-        order: -1;
-      }
-      .question-map { grid-template-columns: repeat(8, 1fr); }
+      .test-body { padding: 12px; }
     }
   </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════
-     TEST HEADER (Minimal — no nav links)
-══════════════════════════════════════════════ -->
+<!-- TEST HEADER -->
 <header class="test-header" role="banner">
-
   <div class="test-title">
     <span data-bind="test-name">Sorting Algorithms</span>
     &nbsp;·&nbsp;
     <span data-bind="student-name" style="color:var(--slate-light)">Jane Student</span>
   </div>
 
-  <!-- Persistent countdown timer -->
-  <!--
-    Integration Team: Initialize the timer with the
-    test's timeLimit (in minutes) from sessionStorage
-    or from the API response.
-  -->
   <div class="timer-block" aria-live="polite" aria-label="Time remaining">
     <span class="timer-icon">⏱</span>
     <span class="timer-display" id="timer-display">30:00</span>
@@ -422,106 +243,30 @@
       Exit Test
     </button>
   </div>
-
 </header>
 
-<!-- ══════════════════════════════════════════════
-     MAIN TEST BODY: Sidebar + Question
-══════════════════════════════════════════════ -->
+<!-- MAIN TEST BODY -->
 <main class="test-body" role="main">
 
-  <!-- ── LEFT: Question Map Sidebar ── -->
-  <aside class="sidebar" aria-label="Question map">
-
-    <h3>Question Map</h3>
-
-    <!--
-      Question map buttons — generated by JS below.
-      DB/Session Team: Persist statuses (answered/flagged)
-      on every navigation so a page refresh restores state.
-    -->
-    <div class="question-map" id="question-map" role="navigation" aria-label="Jump to question">
-      <!-- Populated by renderQuestionMap() in JS -->
-    </div>
-
-    <!-- Legend -->
-    <div class="map-legend" aria-label="Map legend">
-      <div class="legend-item"><div class="legend-dot current"></div>Current</div>
-      <div class="legend-item"><div class="legend-dot answered"></div>Answered</div>
-      <div class="legend-item"><div class="legend-dot flagged"></div>Flagged</div>
-      <div class="legend-item"><div class="legend-dot unanswered"></div>Unanswered</div>
-    </div>
-
-    <!-- Sidebar progress summary -->
-    <div class="sidebar-progress">
-      <div class="prog-label">
-        <span>Answered</span>
-        <span><strong id="answered-count">0</strong> / <span id="total-count">15</span></span>
-      </div>
-      <div class="progress-bar-track">
-        <div class="progress-bar-fill" id="progress-fill" style="width: 0%"></div>
-      </div>
-    </div>
-
-    <!-- Submit button at bottom of sidebar -->
-    <button
-            class="btn btn-accent"
-            style="width:100%; margin-top: 20px;"
-            data-action="submit-test"
-            onclick="openSubmitModal()"
-    >
-      Submit Test
-    </button>
-
-  </aside>
-
-  <!-- ── RIGHT: Question Panel ── -->
+  <!-- Question Panel (full width) -->
   <div class="question-panel" id="question-panel" role="region" aria-label="Current question">
 
     <!-- Question metadata row -->
     <div class="question-meta">
-        <span class="question-counter" id="question-counter">
-          Question 1 of 15
-        </span>
-      <!-- Adaptive difficulty badge — updates after each committed answer -->
-      <span class="badge badge-accent" id="difficulty-badge" aria-live="polite">Intermediate</span>
-      <div class="question-actions-top">
-        <!-- Flag button: marks a question for review -->
-        <button class="btn btn-sm btn-outline"
-                id="flag-btn"
-                data-action="flag-question"
-                onclick="toggleFlag()"
-                aria-pressed="false">
-          🚩 Flag for Review
-        </button>
-      </div>
+      <span class="question-counter" id="question-counter">Question 1 of 15</span>
+      <span class="badge badge-accent" id="difficulty-badge" aria-live="polite">Proficient</span>
     </div>
 
-    <!-- Question text — populated by JS -->
-    <!--
-      AI/Question Bank Team: The question text may contain
-      plain text or a <pre> block with code. Your JSON
-      response should use "\n" for newlines inside code
-      blocks. We'll render them as <pre> tags here.
-    -->
+    <!-- Question text -->
     <div class="question-text" id="question-text" aria-live="polite">
-      <!-- PLACEHOLDER: Loaded by loadQuestion() -->
       <div class="question-loading">
         <div class="spinner"></div>
         <span>Loading question...</span>
       </div>
     </div>
 
-    <!-- Answer choices — populated by JS -->
-    <!--
-      data-choice="A/B/C/D"        — answer identifier
-      data-question-id             — current question ID
-      Integration Team: When a choice is clicked,
-      call selectAnswer(questionId, choiceId) which
-      stores the answer locally and reports to the server.
-    -->
+    <!-- Answer choices -->
     <ul class="choices-list" id="choices-list" role="radiogroup" aria-label="Answer choices">
-      <!-- Populated by renderChoices() in JS -->
     </ul>
 
     <!-- Navigation row -->
@@ -545,34 +290,27 @@
       </div>
     </div>
 
-    <!-- Difficulty path — one dot per committed answer.
-         Size = difficulty level at time of answer; color = correct/wrong. -->
+    <!-- Difficulty path dots -->
     <div id="difficulty-path-row"
          style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
-                  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;"
+                display: flex; align-items: center; gap: 14px; flex-wrap: wrap;"
          aria-label="Difficulty path">
-        <span style="font-size: 0.72rem; color: var(--slate); text-transform: uppercase;
-                     letter-spacing: 0.6px; font-weight: 600;">Difficulty Path</span>
+      <span style="font-size: 0.72rem; color: var(--slate); text-transform: uppercase;
+                   letter-spacing: 0.6px; font-weight: 600;">Difficulty Path</span>
       <div id="difficulty-path-dots"
            style="display: flex; align-items: center; gap: 8px; min-height: 18px;"></div>
     </div>
 
   </div>
-  <!-- end .question-panel -->
 
 </main>
 
-<!-- ══════════════════════════════════════════════
-     SUBMIT CONFIRMATION MODAL
-══════════════════════════════════════════════ -->
+<!-- SUBMIT CONFIRMATION MODAL -->
 <div class="modal-overlay" id="submit-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal">
     <h2 id="modal-title">Submit Your Test</h2>
     <p>Are you sure you want to submit? You cannot change your answers after submission.</p>
-
-    <!-- Filled dynamically if there are unanswered questions -->
     <div id="unanswered-warning" class="unanswered-warning" style="display:none;"></div>
-
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeSubmitModal()">Go Back</button>
       <button class="btn btn-accent btn-lg"
@@ -584,67 +322,31 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════
-     JAVASCRIPT — Test Engine Logic
-     ─────────────────────────────────────────────
-     NOTE TO INTEGRATION TEAM:
-     Replace the PLACEHOLDER_* sections with real
-     API calls. All data-attributes on DOM elements
-     are designed for easy querySelector targeting.
-══════════════════════════════════════════════ -->
 <script>
-
-  // ── STATE ──────────────────────────────────────────────────
-  // Integration/DB Team: This object mirrors what you'll
-  // persist server-side per session.
-  const QUESTION_TIME_LIMIT = 30; // seconds per question
+  const QUESTION_TIME_LIMIT = 30;
 
   const testState = {
     testId:          sessionStorage.getItem('activeTestId') || 'TEST-001',
     studentId:       sessionStorage.getItem('studentId')    || 'STU-DEMO',
     sessionId:       sessionStorage.getItem('sessionId')    || null,
-    currentQuestion: 0,       // 0-based index
-    totalQuestions:  15,      // overridden when questions load
-    timeRemaining:   QUESTION_TIME_LIMIT, // seconds left on CURRENT question
+    currentQuestion: 0,
+    totalQuestions:  15,
+    timeRemaining:   QUESTION_TIME_LIMIT,
     isPaused:        false,
     timerInterval:   null,
-    totalTimeSpent:  0,       // accumulated across committed questions
-
-    // answerMap: { [questionId]: choiceId | '__TIMEOUT__' }
-    // Integration Team: POST this map on submitTest()
-    answerMap: {},
-
-    // flagged: Set of question indices flagged for review
-    flagged: new Set(),
-
-    // questions: array of question objects from the API
-    // AI/Question Bank Team: your API populates this array
-    questions: [],
-
-    // ── Adaptive state ────────────────────────────────────
-    // currentDifficulty — 1 Beginner, 2 Intermediate, 3 Advanced.
-    // Adjusted after each committed answer: +1 on correct (cap 3),
-    // -1 on wrong or timeout (floor 1).
+    totalTimeSpent:  0,
+    answerMap:       {},
+    flagged:         new Set(),
+    questions:       [],
     currentDifficulty: 3,
-    // difficultyPath — one entry per COMMITTED answer, in order.
-    // Rendered as dots at the bottom of the question panel.
-    difficultyPath:    [],    // [{ level: 1..3, correct: boolean }]
-    // previewChoice — the choice the student has clicked but not yet
-    // committed. Committed on Next or on timer expiry.
+    difficultyPath:    [],
     previewChoice:     null,
   };
 
   const API_BASE = 'http://localhost:8080';
 
-  // Each entry stays as a placeholder until the backend delivers a real
-  // question for that index — populated lazily by fetchQuestionInto().
   function makePendingQuestion(index) {
-    return {
-      questionId: `Q-PENDING-${index + 1}`,
-      text: '',
-      choices: [],
-      correct: null
-    };
+    return { questionId: `Q-PENDING-${index + 1}`, text: '', choices: [], correct: null };
   }
 
   function makeFallbackQuestion(index) {
@@ -661,8 +363,6 @@
     };
   }
 
-  // Calls /api/next-question and writes the result into questions[index].
-  // Throws on network/HTTP failure so callers can apply a fallback.
   async function fetchQuestionInto(index) {
     const response = await fetch(`${API_BASE}/api/next-question`, {
       method: 'POST',
@@ -682,16 +382,12 @@
     };
   }
 
-  // ── INIT ───────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', async () => {
-    // Pre-fill 15 empty slots — real questions stream in one per Next click.
     testState.questions = Array.from(
-            { length: testState.totalQuestions },
-            (_, i) => makePendingQuestion(i)
+      { length: testState.totalQuestions },
+      (_, i) => makePendingQuestion(i)
     );
 
-    document.getElementById('total-count').textContent = testState.totalQuestions;
-    renderQuestionMap();
     updateDifficultyBadge();
     renderDifficultyPath();
 
@@ -715,12 +411,9 @@
       testState.questions[0] = makeFallbackQuestion(0);
     }
 
-    loadQuestion(0); // starts the per-question timer itself
+    loadQuestion(0);
   });
 
-  // ── PER-QUESTION TIMER ─────────────────────────────────────
-  // Each question gets its own QUESTION_TIME_LIMIT-second countdown.
-  // On expiry the current question is committed as wrong and we advance.
   function startTimer() {
     clearInterval(testState.timerInterval);
     testState.timeRemaining = QUESTION_TIME_LIMIT;
@@ -728,13 +421,11 @@
 
     testState.timerInterval = setInterval(() => {
       if (testState.isPaused) return;
-
       testState.timeRemaining--;
       updateTimerDisplay();
-
       if (testState.timeRemaining <= 0) {
         clearInterval(testState.timerInterval);
-        commitAndAdvance(); // previewChoice is null → wrong
+        commitAndAdvance();
       }
     }, 1000);
   }
@@ -742,9 +433,7 @@
   function updateTimerDisplay() {
     const el = document.getElementById('timer-display');
     const t  = Math.max(0, testState.timeRemaining);
-    // Keep MM:SS format so the existing warning/danger styling still applies.
     el.textContent = `00:${String(t).padStart(2, '0')}`;
-
     el.classList.remove('warning', 'danger');
     if (t <= 5)       el.classList.add('danger');
     else if (t <= 10) el.classList.add('warning');
@@ -756,154 +445,89 @@
     btn.textContent = testState.isPaused ? '▶ Resume' : '⏸ Pause';
   }
 
-  // ── QUESTION RENDERING ─────────────────────────────────────
   function loadQuestion(index) {
     testState.currentQuestion = index;
-    testState.previewChoice   = null; // fresh question, no pending selection
+    testState.previewChoice   = null;
     const q = testState.questions[index];
     if (!q) return;
 
-    // Update counter
     document.getElementById('question-counter').textContent =
-            `Question ${index + 1} of ${testState.totalQuestions}`;
+      `Question ${index + 1} of ${testState.totalQuestions}`;
 
-    // Render question text (support HTML for code blocks)
     document.getElementById('question-text').innerHTML = q.text;
-
-    // Render choices
     renderChoices(q);
 
-    // Adaptive flow is forward-only: Previous is permanently disabled.
     document.getElementById('prev-btn').disabled = true;
     document.getElementById('next-btn').textContent =
-            (index === testState.totalQuestions - 1) ? 'Finish →' : 'Next →';
+      (index === testState.totalQuestions - 1) ? 'Finish →' : 'Next →';
 
-    // Update flag button state
-    const flagBtn = document.getElementById('flag-btn');
-    const isFlagged = testState.flagged.has(index);
-    flagBtn.textContent  = isFlagged ? '🚩 Flagged' : '🚩 Flag for Review';
-    flagBtn.style.color  = isFlagged ? 'var(--accent)' : '';
-    flagBtn.setAttribute('aria-pressed', String(isFlagged));
-
-    // Badge shows the level for THIS question (set by the previous commit).
     updateDifficultyBadge();
-
-    // Refresh question map + kick off the per-question countdown
-    renderQuestionMap();
     startTimer();
   }
 
   function renderChoices(question) {
     const list = document.getElementById('choices-list');
     list.innerHTML = '';
-    // Forward-only flow: a fresh question starts with no selection.
     question.choices.forEach(choice => {
       const li = document.createElement('li');
-
-      /*
-        data-choice and data-question-id are the primary
-        hooks for the Integration Team's answer-recording logic.
-      */
       li.innerHTML = `
-          <button
-            class="choice-btn"
-            data-choice="${choice.id}"
-            data-question-id="${question.questionId}"
-            onclick="selectAnswer('${question.questionId}', '${choice.id}', this)"
-            role="radio"
-            aria-checked="false"
-            aria-label="Choice ${choice.id}: ${choice.text}"
-          >
-            <span class="choice-letter" aria-hidden="true">${choice.id}</span>
-            <span class="choice-text">${choice.text}</span>
-          </button>
-        `;
+        <button
+          class="choice-btn"
+          data-choice="${choice.id}"
+          data-question-id="${question.questionId}"
+          onclick="selectAnswer('${question.questionId}', '${choice.id}', this)"
+          role="radio"
+          aria-checked="false"
+          aria-label="Choice ${choice.id}: ${choice.text}"
+        >
+          <span class="choice-letter" aria-hidden="true">${choice.id}</span>
+          <span class="choice-text">${choice.text}</span>
+        </button>
+      `;
       list.appendChild(li);
     });
   }
 
-  // ── ANSWER SELECTION ───────────────────────────────────────
-  /**
-   * selectAnswer(questionId, choiceId, element)
-   * ─────────────────────────────────────────────
-   * Preview-only: highlights the chosen answer but does NOT commit.
-   * The answer is committed (scored + difficulty adjusted) when the
-   * student clicks Next, or automatically when the 30-second timer
-   * hits zero.
-   *
-   * Integration Team: commit logic lives in commitAndAdvance().
-   */
   function selectAnswer(questionId, choiceId, el) {
-    // Deselect all choices for this question
     document.querySelectorAll(`[data-question-id="${questionId}"]`).forEach(btn => {
       btn.classList.remove('selected');
       btn.setAttribute('aria-checked', 'false');
     });
-
-    // Highlight selection
     el.classList.add('selected');
     el.setAttribute('aria-checked', 'true');
-
     testState.previewChoice = choiceId;
   }
-
-  // ── COMMIT & ADVANCE ───────────────────────────────────────
-  /**
-   * commitAndAdvance()
-   * ─────────────────────────────────────────────
-   * Scores the current question, records the path entry, adjusts
-   * difficulty, and moves to the next question (or submits on the
-   * last one). Called by Next and by the timer on expiry.
-   *
-   * If previewChoice is null (student ran out the clock or hit Next
-   * without selecting) the question is scored as wrong.
-   */
-
 
   async function commitAndAdvance() {
     clearInterval(testState.timerInterval);
 
-    const idx = testState.currentQuestion;
-    const q = testState.questions[idx];
+    const idx    = testState.currentQuestion;
+    const q      = testState.questions[idx];
     const choice = testState.previewChoice;
-
     const correct = choice !== null && choice === q.correct;
 
-    // record answer
-    testState.difficultyPath.push({
-      level: testState.currentDifficulty,
-      correct
-    });
-
+    testState.difficultyPath.push({ level: testState.currentDifficulty, correct });
     testState.answerMap[q.questionId] = choice || '__TIMEOUT__';
-
     sessionStorage.setItem('answerMap', JSON.stringify(testState.answerMap));
-
     testState.totalTimeSpent += (QUESTION_TIME_LIMIT - Math.max(0, testState.timeRemaining));
 
-    // adjust difficulty
     testState.currentDifficulty = correct
       ? Math.min(5, testState.currentDifficulty + 1)
       : Math.max(1, testState.currentDifficulty - 1);
 
     renderDifficultyPath();
-    updateProgress();
-    renderQuestionMap();
 
     const next = idx + 1;
-
-    // last question → submit
     if (next >= testState.totalQuestions) {
       submitTest();
       return;
     }
 
-    // loading state
     document.getElementById('question-text').innerHTML = `
-          <div class="question-loading">
-            <div class="spinner"></div>
-            <span>Loading next question...</span>
-          </div>`;
+      <div class="question-loading">
+        <div class="spinner"></div>
+        <span>Loading next question...</span>
+      </div>`;
     document.getElementById('choices-list').innerHTML = '';
     document.getElementById('next-btn').disabled = true;
 
@@ -918,24 +542,23 @@
     loadQuestion(next);
   }
 
-
-  // ── DIFFICULTY BADGE ───────────────────────────────────────
   function updateDifficultyBadge() {
     const badge = document.getElementById('difficulty-badge');
     if (!badge) return;
     const level = testState.currentDifficulty;
     const labels  = { 1: 'Emerging', 2: 'Developing', 3: 'Proficient', 4: 'Extending', 5: 'Beyond' };
-    const classes = { 1: 'badge badge-slate', 2: 'badge badge-slate', 3: 'badge badge-accent', 4: 'badge badge-success', 5: 'badge badge-success' };badge.className   = classes[level];
+    const classes = { 1: 'badge badge-slate', 2: 'badge badge-slate', 3: 'badge badge-accent', 4: 'badge badge-success', 5: 'badge badge-success' };
+    badge.className   = classes[level];
     badge.textContent = labels[level];
   }
 
-  // ── DIFFICULTY PATH ────────────────────────────────────────
   function renderDifficultyPath() {
     const container = document.getElementById('difficulty-path-dots');
     if (!container) return;
     container.innerHTML = '';
     testState.difficultyPath.forEach((entry, i) => {
-      const sizePx = entry.level === 1 ? 6 : entry.level === 2 ? 8 : entry.level === 3 ? 11 : entry.level === 4 ? 14 : 17;      const color  = entry.correct ? 'var(--success)' : 'var(--danger)';
+      const sizePx = entry.level === 1 ? 6 : entry.level === 2 ? 8 : entry.level === 3 ? 11 : entry.level === 4 ? 14 : 17;
+      const color  = entry.correct ? 'var(--success)' : 'var(--danger)';
       const dot = document.createElement('span');
       dot.style.display      = 'inline-block';
       dot.style.width        = `${sizePx}px`;
@@ -948,71 +571,21 @@
     });
   }
 
-  // ── QUESTION MAP ───────────────────────────────────────────
-  // In adaptive/forward-only mode the map is informational only —
-  // clicks are disabled so students can't revisit committed questions.
-  function renderQuestionMap() {
-    const mapEl = document.getElementById('question-map');
-    mapEl.innerHTML = '';
-
-    testState.questions.forEach((q, i) => {
-      let status = 'unanswered';
-      if (i === testState.currentQuestion) status = 'current';
-      else if (testState.flagged.has(i))   status = 'flagged';
-      else if (testState.answerMap[q.questionId]) status = 'answered';
-
-      const btn = document.createElement('button');
-      btn.className       = 'q-map-btn';
-      btn.dataset.status  = status;
-      btn.dataset.questionNum = i + 1;
-      btn.textContent     = i + 1;
-      btn.disabled        = true;
-      btn.setAttribute('aria-label', `Question ${i + 1}, status: ${status}`);
-      btn.title = 'Adaptive mode: committed questions cannot be revisited.';
-      mapEl.appendChild(btn);
-    });
-  }
-
-  // ── FLAG FOR REVIEW ────────────────────────────────────────
-  function toggleFlag() {
-    const i = testState.currentQuestion;
-    if (testState.flagged.has(i)) testState.flagged.delete(i);
-    else                          testState.flagged.add(i);
-    loadQuestion(i); // Re-render to update button state
-  }
-
-  // ── NAVIGATION ─────────────────────────────────────────────
-  // Adaptive flow is strictly forward; Previous is disabled in the UI.
-  // The Next button now commits the current answer, adjusts difficulty,
-  // and advances (or submits on the last question).
   function navigateQuestion(direction) {
-    if (direction <= 0) return; // no going back
+    if (direction <= 0) return;
     commitAndAdvance();
   }
 
-  // ── PROGRESS ───────────────────────────────────────────────
-  // Reflect committed answers only — previewing a choice shouldn't bump
-  // the progress bar before the student hits Next.
-  function updateProgress() {
-    const answered = testState.difficultyPath.length;
-    const total    = testState.totalQuestions;
-    document.getElementById('answered-count').textContent = answered;
-    document.getElementById('progress-fill').style.width  = `${(answered / total) * 100}%`;
-  }
-
-  // ── SUBMIT MODAL ───────────────────────────────────────────
   function openSubmitModal() {
     const answered   = Object.keys(testState.answerMap).length;
     const unanswered = testState.totalQuestions - answered;
     const warning    = document.getElementById('unanswered-warning');
-
     if (unanswered > 0) {
       warning.textContent = `⚠ You have ${unanswered} unanswered question${unanswered > 1 ? 's' : ''}. These will be marked incorrect.`;
       warning.style.display = 'block';
     } else {
       warning.style.display = 'none';
     }
-
     document.getElementById('submit-modal').classList.add('open');
   }
 
@@ -1020,22 +593,6 @@
     document.getElementById('submit-modal').classList.remove('open');
   }
 
-  /**
-   * submitTest()
-   * ─────────────────────────────────────────────
-   * INTEGRATION POINT
-   * Integration Team: Replace the simulated redirect
-   * with a real POST to /api/results/submit
-   *
-   * Body: {
-   *   testId:    testState.testId,
-   *   studentId: testState.studentId,
-   *   answerMap: testState.answerMap,
-   *   timeTaken: (original time - timeRemaining)
-   * }
-   *
-   * On success → redirect to results.html with resultId
-   */
   function submitTest() {
     clearInterval(testState.timerInterval);
     closeSubmitModal();
@@ -1056,14 +613,15 @@
         correctAnswer: correctChoice ? `${q.correct} — ${correctChoice.text}` : q.correct,
         studentChoiceId: isTimeout ? null : raw,
         studentAnswer: isTimeout
-                ? '(No answer submitted)'
-                : studentChoice ? `${raw} — ${studentChoice.text}` : String(raw),
+          ? '(No answer submitted)'
+          : studentChoice ? `${raw} — ${studentChoice.text}` : String(raw),
         status: isTimeout ? 'skipped' : correct ? 'correct' : 'incorrect',
         difficulty: pathEntry ? pathEntry.level : null,
         flagged: testState.flagged.has(i),
         aiPriority: !correct || isTimeout
       };
     });
+
     const correctCount = reviewQuestions.filter(q => q.status === 'correct').length;
     const testName = (document.querySelector('[data-bind="test-name"]')?.textContent || '').trim() || 'Test';
 
@@ -1082,10 +640,6 @@
       questions: reviewQuestions
     };
 
-    // TODO(DB team — Michael C. / Marwan / Jason): replace the sessionStorage
-    // testHistory write below with POST /api/results/submit so attempts are
-    // persisted server-side. history.html / results.html should then read via
-    // GET /api/results/history and GET /api/results/:id respectively.
     const historyId = 'HIST-' + Date.now();
     payload.historyId = historyId;
 
@@ -1115,12 +669,10 @@
     }
 
     console.log('[Submit] Posting results:', payload);
-    // PLACEHOLDER: Simulate navigation to results
     sessionStorage.setItem('lastResult', JSON.stringify(payload));
     window.location.href = 'results.html';
   }
 
-  // ── EXIT ───────────────────────────────────────────────────
   function confirmExit() {
     if (confirm('Are you sure you want to exit? Your progress will be lost.')) {
       clearInterval(testState.timerInterval);
@@ -1129,11 +681,9 @@
     }
   }
 
-  // Close modal on overlay click
   document.getElementById('submit-modal').addEventListener('click', function(e) {
     if (e.target === this) closeSubmitModal();
   });
-
 </script>
 
 <script src="integration.js"></script>

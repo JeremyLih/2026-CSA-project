@@ -15,6 +15,11 @@ public class Database {
     private static final HikariDataSource pool;
 
     static {
+        try {
+            Class.forName("org.postgresql.Driver"); // ADD THIS LINE
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("PostgreSQL driver not found", e);
+        }
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(URL);
         config.setUsername(requireEnv("DB_USER"));

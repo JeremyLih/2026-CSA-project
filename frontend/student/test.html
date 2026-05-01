@@ -891,11 +891,11 @@
         document.getElementById('next-btn').disabled = true;
 
         try {
-          const response = await fetch('http://localhost:8080/api/next-question', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: testState.studentId, // ✅ FIX: was using sessionStorage.getItem('sessionId')
+          const response = await fetch('http://localhost:8080/api/questions/next', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+              sessionId: sessionStorage.getItem('sessionId') || testState.studentId,
               difficulty: testState.currentDifficulty,
               index: next
             })

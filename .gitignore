@@ -3,3 +3,5 @@
 backend/out
 backend/lib
 backend/.env
+target/
+*.class

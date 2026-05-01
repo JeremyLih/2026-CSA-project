@@ -1,12 +1,13 @@
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import com.google.gson.Gson;
 
 import java.sql.*;
 
 public class Database {
 
     private static final String URL =
-            "jdbc:postgresql://aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require";
+            "jdbc:postgresql://aws-1-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require";
 
     // ─────────────────────────────
     // CONNECTION POOL
@@ -70,7 +71,32 @@ public class Database {
             e.printStackTrace();
         }
     }
+    public static void printAllQuestions() {
 
+        String sql = """
+            SELECT id, topic, difficulty, question, answersjson, correct_answer
+            FROM questions
+            ORDER BY created_at DESC
+            """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                System.out.println("ID: " + rs.getString("id"));
+                System.out.println("Topic: " + rs.getString("topic"));
+                System.out.println("Difficulty: " + rs.getInt("difficulty"));
+                System.out.println("Question: " + rs.getString("question"));
+                System.out.println("Answers JSON: " + rs.getString("answersjson"));
+                System.out.println("Correct Answer: " + rs.getString("correct_answer"));
+                System.out.println("----------------------------------");
+            }
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
     // ─────────────────────────────
     // STUDENTS
     // ─────────────────────────────

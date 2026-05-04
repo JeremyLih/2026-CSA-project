@@ -19,9 +19,7 @@ public class Main {
 
         System.out.println("Server starting...");
 
-        int port = 8080;
-        String portEnv = System.getenv("PORT");
-        if (portEnv != null) port = Integer.parseInt(portEnv);
+        int port = Config.port();
 
         HttpServer server = HttpServer.create(new InetSocketAddress("0.0.0.0", port), 0);
 
@@ -38,6 +36,47 @@ public class Main {
                 send(exchange, 200, "OK");
             } catch (Exception e) {
                 throw new RuntimeException(e);
+            }
+        });
+
+        server.createContext("/api/gemini", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                ChatRequest request = gson.fromJson(body, ChatRequest.class);
+
+                if (request == null || request.message == null || request.message.isBlank()) {
+                    sendJson(exchange, 400, new ErrorResponse("Request body must include a non-empty message."));
+                    return;
+                }
+
+                String reply = gemini.generateReply(request.message.trim());
+                sendJson(exchange, 200, new ChatResponse(reply));
+
+            } catch (com.google.gson.JsonSyntaxException e) {
+                try {
+                    sendJson(exchange, 400, new ErrorResponse("Request body must be valid JSON."));
+                } catch (Exception ignored) {}
+            } catch (IllegalStateException e) {
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 502, new ErrorResponse("Gemini request failed."));
+                } catch (Exception ignored) {}
             }
         });
 
@@ -507,6 +546,15 @@ public class Main {
         String sessionId;
         Integer difficulty;
         Integer unit;
+    }
+
+    static class ChatRequest {
+        String message;
+    }
+
+    static class ChatResponse {
+        String reply;
+        ChatResponse(String reply) { this.reply = reply; }
     }
 
     static class ErrorResponse {

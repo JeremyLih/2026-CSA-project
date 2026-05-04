@@ -17,7 +17,7 @@ It is a thin AI gateway, not a full learning-platform backend.
 
 ## Endpoint
 
-### `POST /api/chat`
+### `POST /api/gemini`
 
 Use this endpoint to send a single user message to the backend.
 
@@ -65,7 +65,7 @@ Error response:
   Required Gemini API key
 - `GEMINI_MODEL`
   Optional model override
-  Default: `gemini-3-flash-preview`
+  Default: `gemini-2.5-flash`
 - `PORT`
   Optional backend port
   Default: `8080`
@@ -74,7 +74,7 @@ Example:
 
 ```bash
 export GEMINI_API_KEY="your_real_key"
-export GEMINI_MODEL="gemini-3-flash-preview"
+export GEMINI_MODEL="gemini-2.0-flash"
 export PORT=8080
 ./backend/run.sh
 ```

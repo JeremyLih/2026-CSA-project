@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSA Gemini Chat Demo</title>
+  <meta
+    name="description"
+    content="A simple Gemini chat demo for the 2026 CSA project frontend."
+  />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="hero">
+      <p class="eyebrow">2026 CSA Project</p>
+      <h1>Gemini chat demo</h1>
+      <p class="hero-copy">
+        This page sends a single message to the backend at
+        <code>cs.andromedax.org/api/gemini</code> and renders the reply.
+      </p>
+    </section>
+
+    <section class="chat-panel" aria-label="Chat demo">
+      <div class="panel-head">
+        <div>
+          <h2>Try the API</h2>
+          <p id="api-url" class="api-url"></p>
+        </div>
+        <button id="clear-button" class="ghost-button" type="button">Clear</button>
+      </div>
+
+      <div id="message-list" class="message-list" aria-live="polite"></div>
+
+      <form id="chat-form" class="composer">
+        <label class="sr-only" for="message-input">Message</label>
+        <textarea
+          id="message-input"
+          name="message"
+          rows="4"
+          maxlength="4000"
+          placeholder="Ask Gemini something about AP CSA, Java, or anything you want for the demo."
+          required
+        ></textarea>
+        <div class="composer-actions">
+          <p class="hint">Enter sends. Shift+Enter makes a new line.</p>
+          <button id="send-button" class="primary-button" type="submit">Send</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

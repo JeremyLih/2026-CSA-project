@@ -7,15 +7,17 @@ SRC_DIR="$ROOT_DIR/src/main/java"
 OUT_DIR="$ROOT_DIR/out"
 LIB_DIR="$ROOT_DIR/lib"
 
-if [[ ! -f "$ROOT_DIR/.env" ]]; then
-    echo "Error: backend/.env not found." >&2
-    echo "Create it with DB_USER, DB_PASSWORD, GEMINI_API_KEY (and optionally PORT, GEMINI_MODEL)." >&2
-    exit 1
+if [[ -f "$ROOT_DIR/.env" ]]; then
+    set -a
+    source "$ROOT_DIR/.env"
+    set +a
 fi
 
-set -a
-source "$ROOT_DIR/.env"
-set +a
+if [[ -z "${GEMINI_API_KEY:-}" ]]; then
+    echo "Error: GEMINI_API_KEY is required." >&2
+    echo "Set it in your shell or backend/.env before starting the server." >&2
+    exit 1
+fi
 
 mkdir -p "$LIB_DIR"
 

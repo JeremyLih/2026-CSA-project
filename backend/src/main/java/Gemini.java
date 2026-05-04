@@ -26,6 +26,9 @@ public class Gemini {
     }
 
     public String generateReply(String message) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("Missing GEMINI_API_KEY environment variable.");
+        }
 
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/"
                 + urlEncode(model)

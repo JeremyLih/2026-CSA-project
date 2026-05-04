@@ -1,1 +1,1 @@
-ssh -i /path/to/your/key root@165.245.232.197
+ssh -i ~/Desktop/digitalocean root@165.245.232.197

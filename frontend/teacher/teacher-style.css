@@ -1,4 +1,2186 @@
+/* ============================================================
+   teacher-styles.css — Teacher Dashboard Styles
+   Matches existing Adaptive Test Engine visual system
+   ============================================================ */
+
+/* ── 1. DESIGN TOKENS ─────────────────────────────────────── */
+:root {
+  --navy:        #0D1B2A;
+  --navy-mid:    #1A2E45;
+  --navy-light:  #243B55;
+  --slate:       #6B7C93;
+  --slate-light: #A0AEBF;
+  --white:       #FFFFFF;
+  --off-white:   #F4F6F9;
+  --accent:      #C9A84C;
+  --danger:      #C0392B;
+  --success:     #1E7E34;
+  --border:      #D1D9E0;
+
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-mono:    'IBM Plex Mono', 'Courier New', monospace;
+
+  --radius:    6px;
+  --radius-lg: 12px;
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.18);
+  --ease: cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* ── 2. RESET & BASE ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--off-white);
+  color: var(--navy);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+textarea {
+  min-height: 95px;
+  resize: vertical;
+}
+
+/* ── 3. TYPOGRAPHY ───────────────────────────────────────── */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  color: var(--navy);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+h2 {
+  font-size: clamp(1.25rem, 2.5vw, 1.8rem);
+}
+
+h3 {
+  font-size: 1.05rem;
+}
+
 p {
-    font-size: 20px;
-    font-family: 
+  color: var(--slate);
+  font-size: 0.95rem;
+}
+
+a {
+  color: var(--navy-light);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: var(--accent);
+}
+
+/* ── 4. LAYOUT ───────────────────────────────────────────── */
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.main-content {
+  flex: 1;
+  padding: 36px 0 60px;
+}
+
+.section-block {
+  margin-top: 36px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.section-heading h2 {
+  font-size: 1.3rem;
+}
+
+/* ── 5. HEADER ───────────────────────────────────────────── */
+.site-header {
+  background: var(--navy);
+  border-bottom: 2px solid var(--accent);
+  padding: 0 32px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-md);
+}
+
+.site-header .logo {
+  font-family: var(--font-display);
+  color: var(--white);
+  font-size: 1.2rem;
+  letter-spacing: 0.5px;
+}
+
+.site-header .logo span {
+  color: var(--accent);
+}
+
+.site-header nav {
+  display: flex;
+  gap: 8px;
+}
+
+.site-header nav a {
+  color: var(--slate-light);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  transition: all 0.2s var(--ease);
+}
+
+.site-header nav a:hover,
+.site-header nav a.active {
+  color: var(--white);
+  background: var(--navy-light);
+}
+
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--slate-light);
+  font-size: 0.85rem;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--navy-light);
+  border: 2px solid var(--slate);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--white);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* ── 6. BUTTONS ──────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.btn-primary {
+  background: var(--navy);
+  color: var(--white);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  background: var(--navy-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--navy);
+}
+
+.btn-accent:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--navy);
+  border: 1.5px solid var(--border);
+}
+
+.btn-outline:hover {
+  border-color: var(--navy);
+  background: var(--off-white);
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: var(--white);
+}
+
+.btn-danger:hover {
+  filter: brightness(0.92);
+}
+
+.btn-lg {
+  padding: 13px 30px;
+  font-size: 1rem;
+}
+
+.btn-sm {
+  padding: 7px 14px;
+  font-size: 0.8rem;
+}
+
+.light-outline {
+  color: var(--white);
+  border-color: var(--slate);
+}
+
+.light-outline:hover {
+  color: var(--navy);
+  background: var(--white);
+}
+
+.google-btn {
+  width: 100%;
+  margin: 22px 0 16px;
+}
+
+.google-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--navy);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+/* ── 7. FORMS ────────────────────────────────────────────── */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--navy);
+  background: var(--white);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--navy);
+  box-shadow: 0 0 0 3px rgba(13, 27, 42, 0.1);
+}
+
+.stacked-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── 8. CARDS / BADGES / ALERTS ──────────────────────────── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.badge-navy {
+  background: var(--navy);
+  color: var(--white);
+}
+
+.badge-slate {
+  background: var(--slate-light);
+  color: var(--navy);
+}
+
+.badge-accent {
+  background: var(--accent);
+  color: var(--navy);
+}
+
+.badge-success {
+  background: #d4edda;
+  color: var(--success);
+}
+
+.alert {
+  padding: 12px 18px;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  border-left: 4px solid;
+}
+
+.alert-info {
+  background: #e8edf5;
+  border-color: var(--navy);
+  color: var(--navy-mid);
+}
+
+.alert-warning {
+  background: #fef9e7;
+  border-color: var(--accent);
+  color: #7d6009;
+}
+
+/* ── 9. LOGIN SCREEN ─────────────────────────────────────── */
+.login-screen {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.login-card {
+  width: min(100%, 520px);
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px;
+  box-shadow: var(--shadow-lg);
+}
+
+.login-card h1 {
+  margin-top: 14px;
+  margin-bottom: 10px;
+}
+
+/* ── 10. TEACHER DASHBOARD SPECIAL SECTIONS ──────────────── */
+.welcome-banner {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+  color: var(--white);
+  padding: 32px 36px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-banner::after {
+  content: '';
+  position: absolute;
+  right: -40px;
+  bottom: -40px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(201, 168, 76, 0.08);
+  pointer-events: none;
+}
+
+.welcome-banner h1 {
+  color: var(--white);
+  font-size: 1.7rem;
+  margin-bottom: 6px;
+}
+
+.welcome-banner p {
+  color: var(--slate-light);
+}
+
+.banner-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  z-index: 1;
+}
+
+.stats-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 36px;
+}
+
+.stat-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  color: var(--navy);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: var(--slate);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.teacher-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.course-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  border-top: 4px solid var(--navy);
+}
+
+.course-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.course-card h3 {
+  margin-bottom: 8px;
+}
+
+.course-meta {
+  display: flex;
+  gap: 16px;
+  color: var(--slate);
+  font-size: 0.8rem;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.student-mini-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.student-mini-list span {
+  background: var(--off-white);
+  color: var(--navy);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 4px 9px;
+  font-size: 0.75rem;
+}
+
+/* ── 11. TEST BUILDER ────────────────────────────────────── */
+.test-builder-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.manual-question-box {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  background: var(--off-white);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.answer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.question-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.question-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 14px 16px;
+}
+
+.question-item p {
+  font-size: 0.8rem;
+  margin-top: 4px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ── 12. QUESTION BANK ───────────────────────────────────── */
+.bank-list {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.bank-question {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--white);
+}
+
+.bank-meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* ── 13. TABLES ──────────────────────────────────────────── */
+.table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.teacher-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.teacher-table thead tr {
+  background: var(--navy);
+  color: var(--white);
+}
+
+.teacher-table thead th {
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.teacher-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+}
+
+.teacher-table tbody tr:hover {
+  background: var(--off-white);
+}
+
+.teacher-table tbody td {
+  padding: 12px 16px;
+  color: var(--navy);
+}
+
+.teacher-table tbody td.secondary {
+  color: var(--slate);
+}
+
+.empty-table {
+  text-align: center;
+  color: var(--slate) !important;
+  padding: 28px !important;
+}
+
+/* ── 14. EMPTY STATES / FOOTER ───────────────────────────── */
+.empty-state {
+  background: var(--white);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  padding: 30px;
+  text-align: center;
+  grid-column: 1 / -1;
+}
+
+.empty-state.compact {
+  padding: 16px;
+}
+
+.muted {
+  color: var(--slate) !important;
+}
+
+.site-footer {
+  background: var(--navy);
+  color: var(--slate-light);
+  text-align: center;
+  padding: 20px;
+  font-size: 0.78rem;
+  margin-top: auto;
+  border-top: 2px solid var(--accent);
+}
+
+/* ── 15. RESPONSIVE ──────────────────────────────────────── */
+@media (max-width: 900px) {
+  .teacher-grid,
+  .test-builder-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .answer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-question {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .hide-mobile {
+    display: none !important;
+  }
+
+  .site-header {
+    padding: 0 16px;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .welcome-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .teacher-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .card-header,
+  .section-heading,
+  .question-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+/* ============================================================
+   ADDITIONS FOR MULTI-SCREEN TEACHER DASHBOARD
+   Add this to the bottom of teacher-style.css
+   ============================================================ */
+
+/* Navbar buttons now act like screen tabs, not normal links */
+.nav-button {
+  color: var(--slate-light);
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 9px 13px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.nav-button:hover,
+.nav-button.active {
+  color: var(--white);
+  background: var(--navy-light);
+}
+
+/* Hide every app screen by default */
+.app-screen {
+  display: none;
+}
+
+/* Only the selected screen is visible */
+.app-screen.active-screen {
+  display: block;
+}
+
+/* Small dashboard preview rows */
+.preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.preview-item {
+  border: 1px solid var(--border);
+  background: var(--off-white);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.preview-item strong {
+  color: var(--navy);
+  font-size: 0.95rem;
+}
+
+.preview-item span {
+  color: var(--slate);
+  font-size: 0.82rem;
+}
+
+/* Placeholder results screen */
+.results-placeholder {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+  color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 48px;
+  box-shadow: var(--shadow-md);
+  text-align: center;
+}
+
+.results-placeholder h1 {
+  color: var(--accent);
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  letter-spacing: 4px;
+  margin-bottom: 12px;
+}
+
+.results-placeholder p {
+  color: var(--slate-light);
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* Makes the top nav wrap a bit better if the window is narrow */
+.site-header nav {
+  align-items: center;
+}
+
+/* Mobile fallback */
+@media (max-width: 900px) {
+  .site-header {
+    height: auto;
+    min-height: 60px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .site-header nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .nav-button {
+    font-size: 0.75rem;
+    padding: 7px 10px;
+  }
+}
+/* ============================================================
+   V2 FLOW ADDITIONS
+   Public sign-in page + course-centered teacher dashboard
+   ============================================================ */
+
+/* Public landing/sign-in page */
+.public-login-page {
+  flex: 1;
+  padding: 64px 24px;
+  background:
+    radial-gradient(circle at top right, rgba(201, 168, 76, 0.16), transparent 32%),
+    linear-gradient(135deg, var(--off-white) 0%, #e9eef5 100%);
+}
+
+.public-hero {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+  gap: 36px;
+  align-items: center;
+}
+
+.public-hero-text,
+.public-hero-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.public-hero-text {
+  padding: 48px;
+}
+
+.public-hero-text h1 {
+  margin-top: 18px;
+  margin-bottom: 16px;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+}
+
+.public-hero-text p {
+  max-width: 650px;
+  font-size: 1.02rem;
+}
+
+.public-actions {
+  margin-top: 28px;
+  margin-bottom: 16px;
+}
+
+.wide-google {
+  width: min(100%, 420px);
+}
+
+.public-hero-card {
+  padding: 34px;
+}
+
+.public-hero-card h2 {
+  margin-bottom: 20px;
+}
+
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.feature-item {
+  border: 1px solid var(--border);
+  background: var(--off-white);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.feature-item strong {
+  display: block;
+  color: var(--navy);
+  margin-bottom: 4px;
+}
+
+.feature-item span {
+  color: var(--slate);
+  font-size: 0.9rem;
+}
+
+/* Course dashboard/course cards */
+.clickable-card {
+  cursor: pointer;
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+
+.clickable-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.unit-pill {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 6px 10px;
+  border-radius: 99px;
+  background: #fef9e7;
+  color: #7d6009;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.card-action {
+  margin-top: 16px;
+}
+
+.create-course-panel {
+  margin-bottom: 32px;
+}
+
+/* Course detail page */
+.back-button {
+  margin-bottom: 18px;
+}
+
+.course-hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+  border-radius: var(--radius-lg);
+  padding: 36px;
+  color: var(--white);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 28px;
+  align-items: center;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+}
+
+.course-hero h1 {
+  color: var(--white);
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.course-hero p {
+  color: var(--slate-light);
+  max-width: 720px;
+}
+
+.course-hero-stats {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.course-hero-stats div {
+  min-width: 110px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--radius);
+  padding: 14px;
+  text-align: center;
+}
+
+.course-hero-stats strong {
+  display: block;
+  color: var(--accent);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+
+.course-hero-stats span {
+  display: block;
+  color: var(--slate-light);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Course internal tabs */
+.course-tabs {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  box-shadow: var(--shadow-sm);
+}
+
+.course-tab {
+  border: none;
+  background: transparent;
+  color: var(--slate);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.course-tab:hover,
+.course-tab.active {
+  background: var(--navy);
+  color: var(--white);
+}
+
+.course-tab-screen {
+  display: none;
+}
+
+.course-tab-screen.active-course-tab {
+  display: block;
+}
+
+/* Student and request cards */
+.student-card,
+.request-item {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.request-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* AI suggestions */
+.suggestion-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.suggestion-item {
+  background: #fef9e7;
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+.suggestion-item strong {
+  color: var(--navy);
+}
+
+.suggestion-item p {
+  margin-top: 4px;
+}
+
+/* Question bank layout */
+.question-bank-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+/* Center actions inside placeholder pages */
+.center-actions {
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* Responsive changes */
+@media (max-width: 900px) {
+  .public-hero,
+  .course-hero,
+  .question-bank-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .public-hero-text {
+    padding: 34px;
+  }
+
+  .course-hero-stats {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 600px) {
+  .public-login-page {
+    padding: 32px 16px;
+  }
+
+  .public-hero-text,
+  .public-hero-card,
+  .course-hero {
+    padding: 24px;
+  }
+
+  .course-tabs {
+    flex-direction: column;
+  }
+
+  .course-tab {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+/* ============================================================
+   TEST PDF UPLOAD + VIEWER
+   ============================================================ */
+.file-drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--off-white);
+  padding: 26px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.2s var(--ease);
+}
+
+.file-drop-zone:hover,
+.file-drop-zone:focus,
+.file-drop-zone.drag-over {
+  border-color: var(--accent);
+  background: #fef9e7;
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.file-drop-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-drop-content strong {
+  color: var(--navy);
+}
+
+.file-drop-content span {
+  color: var(--slate);
+  font-size: 0.88rem;
+}
+
+.file-preview {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.file-preview div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.file-preview span {
+  color: var(--slate);
+  font-size: 0.82rem;
+}
+
+.file-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pdf-viewer {
+  width: 100%;
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--off-white);
+}
+
+.pdf-viewer iframe {
+  width: 100%;
+  height: 560px;
+  border: 0;
+}
+
+.test-detail-hero {
+  text-align: left;
+}
+
+.test-detail-hero .center-actions {
+  justify-content: flex-start;
+}
+
+@media (max-width: 768px) {
+  .file-preview {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pdf-viewer,
+  .pdf-viewer iframe {
+    min-height: 420px;
+    height: 420px;
+  }
+}
+
+/* ============================================================
+   STREAMLINED NAVIGATION ADDITIONS
+   ============================================================ */
+.nav-history-button {
+  border: 1px solid rgba(160, 174, 191, 0.35);
+}
+
+.nav-history-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.nav-history-button:disabled:hover {
+  color: var(--slate-light);
+  background: transparent;
+}
+
+
+/* ============================================================
+   RESULTS REPORT ADDITIONS
+   Understanding levels + topic/student report cards
+   ============================================================ */
+.results-report-hero {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.results-report-hero h1 {
+  font-size: clamp(2.4rem, 7vw, 4.6rem);
+}
+
+.results-report-hero .badge {
+  margin-bottom: 14px;
+}
+
+.results-summary-strip {
+  margin-top: 24px;
+  margin-bottom: 0;
+}
+
+.results-layout-grid {
+  display: grid;
+  grid-template-columns: 0.95fr 1.05fr;
+  gap: 24px;
+  margin-top: 36px;
+}
+
+.understanding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.understanding-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-top: 5px solid var(--navy);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  gap: 10px;
+}
+
+.understanding-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.understanding-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.understanding-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.understanding-threshold-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.understanding-threshold-badge {
+  align-self: flex-start;
+}
+
+.understanding-card-copy {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.understanding-card h3 {
+  font-size: 1rem;
+}
+
+.understanding-count {
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  line-height: 1;
+  color: var(--navy);
+  margin-bottom: 8px;
+}
+
+.understanding-card p {
+  font-size: 0.82rem;
+}
+
+.topic-list,
+.student-result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.topic-result-card,
+.student-result-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--off-white);
+  padding: 16px;
+}
+
+.topic-result-header,
+.student-result-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.topic-result-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.class-average-badge {
+  background: #e8edf5;
+  color: var(--navy);
+}
+
+.topic-result-header p,
+.student-result-header p {
+  font-size: 0.82rem;
+}
+
+.level-meter {
+  width: 100%;
+  height: 9px;
+  border-radius: 99px;
+  background: var(--white);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.level-meter-fill {
+  height: 100%;
+  background: var(--navy);
+  border-radius: 99px;
+}
+
+.topic-result-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--slate);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.student-score-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.student-score-block strong {
+  font-family: var(--font-display);
+  color: var(--navy);
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.student-topic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.student-topic-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  font-size: 0.82rem;
+}
+
+.badge-level {
+  border: 1px solid transparent;
+}
+
+/* More visible but still minimalist understanding-level colors */
+.level-emerging {
+  border-top-color: var(--danger);
+  background: linear-gradient(to bottom, #fff5f4 0%, var(--white) 34%);
+}
+
+.level-developing {
+  border-top-color: #d68910;
+  background: linear-gradient(to bottom, #fff8ee 0%, var(--white) 34%);
+}
+
+.level-proficient {
+  border-top-color: var(--navy-light);
+  background: linear-gradient(to bottom, #f1f5fa 0%, var(--white) 34%);
+}
+
+.level-extending {
+  border-top-color: var(--success);
+  background: linear-gradient(to bottom, #f2fbf4 0%, var(--white) 34%);
+}
+
+.level-beyond-ap {
+  border-top-color: var(--accent);
+  background: linear-gradient(to bottom, #fffbee 0%, var(--white) 34%);
+}
+
+.level-emerging .understanding-count {
+  color: #b83227;
+}
+
+.level-developing .understanding-count {
+  color: #b9770e;
+}
+
+.level-proficient .understanding-count {
+  color: var(--navy);
+}
+
+.level-extending .understanding-count {
+  color: var(--success);
+}
+
+.level-beyond-ap .understanding-count {
+  color: #9c7a1c;
+}
+
+/* Level threshold badges inside the understanding cards */
+.level-emerging .badge-slate {
+  background: #f9dfdb;
+  color: #8f2d23;
+}
+
+.level-developing .badge-slate {
+  background: #fbe9c9;
+  color: #8a5a00;
+}
+
+.level-proficient .badge-slate {
+  background: #dce6f2;
+  color: #18324a;
+}
+
+.level-extending .badge-slate {
+  background: #dcefdc;
+  color: #1d6a2f;
+}
+
+.level-beyond-ap .badge-slate {
+  background: #f6edc9;
+  color: #7d6009;
+}
+
+.badge-level.level-emerging {
+  background: #f9e1de;
+  color: var(--danger);
+  border-color: #f0b8b1;
+}
+
+.badge-level.level-developing {
+  background: #fef4e5;
+  color: #9a5f00;
+  border-color: #f5c77a;
+}
+
+.badge-level.level-proficient {
+  background: #e8edf5;
+  color: var(--navy);
+  border-color: var(--slate-light);
+}
+
+.badge-level.level-extending {
+  background: #d4edda;
+  color: var(--success);
+  border-color: #9bd3a8;
+}
+
+.badge-level.level-beyond-ap {
+  background: #fef9e7;
+  color: #7d6009;
+  border-color: var(--accent);
+}
+
+@media (max-width: 1000px) {
+  .understanding-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .results-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .understanding-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-topic-row {
+    grid-template-columns: 1fr;
+  }
+
+  .student-score-block {
+    align-items: flex-start;
+  }
+}
+
+
+/* ============================================================
+   RESULTS ASSESSMENT CENTER ADDITIONS
+   Shows assessments first, then selected test/student reports
+   ============================================================ */
+
+.assessment-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.assessment-result-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--navy);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.2s var(--ease),
+    box-shadow 0.2s var(--ease),
+    border-color 0.2s var(--ease);
+}
+
+.assessment-result-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.assessment-result-card.active-assessment-card {
+  border-color: var(--accent);
+  border-top-color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+
+.assessment-result-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.assessment-result-card h3 {
+  margin-bottom: 8px;
+}
+
+.assessment-result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.assessment-result-stats div {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--off-white);
+  padding: 12px;
+  text-align: center;
+}
+
+.assessment-result-stats strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  color: var(--navy);
+  line-height: 1;
+}
+
+.assessment-result-stats span {
+  display: block;
+  margin-top: 4px;
+  color: var(--slate);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.selected-assessment-panel {
+  scroll-margin-top: 90px;
+}
+
+.student-result-list {
+  scroll-margin-top: 90px;
+}
+
+
+/* ============================================================
+   RESULTS PAGE + STUDENT REPORT ADDITIONS
+   Completed/missing student lists and individual result page
+   ============================================================ */
+
+.assessment-student-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.8fr);
+  gap: 20px;
+}
+
+.mini-card-heading {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--off-white);
+}
+
+.mini-card-heading h3 {
+  margin-bottom: 4px;
+}
+
+.missing-students-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.missing-student-list {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.missing-student-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--off-white);
+  padding: 12px 14px;
+}
+
+.missing-student-item p {
+  font-size: 0.8rem;
+}
+
+.student-result-hero {
+  text-align: left;
+}
+
+.student-result-hero h1 {
+  color: var(--accent);
+  margin-top: 16px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 900px) {
+  .assessment-student-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+.student-result-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.student-submission-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.answer-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.answer-preview-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--off-white);
+  padding: 16px;
+}
+
+.answer-preview-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.answer-preview-top p {
+  font-size: 0.82rem;
+  margin-top: 4px;
+}
+
+.answer-preview-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--slate);
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.placeholder-answer-box {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--white);
+  padding: 12px;
+  color: var(--navy-mid);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 1000px) {
+  .student-submission-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   INTEGRATED RESULTS DASHBOARD ADDITIONS
+   Combines the streamlined assessment picker with TP2-style
+   class review, distribution, filtered roster, and diagnostics.
+   ============================================================ */
+
+.badge-info {
+  background: #e7eef7;
+  color: #2f5d8a;
+}
+
+.badge-danger {
+  background: #f8d7da;
+  color: var(--danger);
+}
+
+.assessment-detail-section[hidden] {
+  display: none !important;
+}
+
+.selected-results-hero {
+  background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+  color: var(--white);
+  border-radius: var(--radius-lg);
+  padding: 32px 36px;
+  box-shadow: var(--shadow-lg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 22px;
+  align-items: center;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.selected-results-hero::after {
+  content: '';
+  position: absolute;
+  right: -38px;
+  bottom: -42px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(201, 168, 76, 0.08);
+  pointer-events: none;
+}
+
+.selected-results-hero h2,
+.selected-results-hero p {
+  color: var(--white);
+}
+
+.selected-results-hero h2 {
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  margin-bottom: 8px;
+}
+
+.hero-topline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.selected-results-meta {
+  color: var(--slate-light);
+  font-size: 0.86rem;
+  margin-top: 8px;
+}
+
+.selected-results-summary {
+  margin-top: 14px;
+  color: var(--white);
+  font-size: 1rem;
+  font-weight: 500;
+  max-width: 860px;
+}
+
+.selected-results-summary div {
+  margin-bottom: 4px;
+}
+
+.score-circle {
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+  border: 4px solid var(--accent);
+  background: rgba(201, 168, 76, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.score-pct {
+  font-size: 2.25rem;
+  line-height: 1;
+  color: var(--accent);
+  font-family: var(--font-display);
+}
+
+.score-label {
+  color: var(--slate-light);
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.6px;
+  margin-top: 5px;
+}
+
+.results-insight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 24px;
+}
+
+.card-title-block p {
+  margin-top: 4px;
+  font-size: 0.88rem;
+}
+
+.ai-review-body {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.ai-review-body h3 {
+  margin-bottom: 8px;
+}
+
+.mini-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mini-list li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--navy);
+  font-size: 0.9rem;
+}
+
+.mini-list li::before {
+  content: '•';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.distribution-wrap {
+  display: grid;
+  gap: 12px;
+}
+
+.dist-row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr) 44px;
+  gap: 12px;
+  align-items: center;
+}
+
+.dist-label,
+.dist-count {
+  font-size: 0.84rem;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.dist-bar-track {
+  height: 12px;
+  background: #e8edf3;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dist-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--navy) 0%, var(--accent) 100%);
+}
+
+.dist-bar-fill.level-emerging {
+  background: linear-gradient(90deg, #C0392B, #e74c3c);
+}
+
+.dist-bar-fill.level-developing {
+  background: linear-gradient(90deg, #d68910, #f4c35c);
+}
+
+.dist-bar-fill.level-proficient {
+  background: linear-gradient(90deg, var(--navy), var(--navy-light));
+}
+
+.dist-bar-fill.level-extending {
+  background: linear-gradient(90deg, #1E7E34, #28a745);
+}
+
+.dist-bar-fill.level-beyond-ap {
+  background: linear-gradient(90deg, #9c7a1c, var(--accent));
+}
+
+.table-wrap {
+  overflow-x: auto;
+  padding: 18px 24px 24px;
+}
+
+.table-card .table-wrap .teacher-table {
+  min-width: 720px;
+}
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 24px 16px;
+}
+
+.chip {
+  border: 1.5px solid var(--border);
+  background: var(--white);
+  color: var(--navy);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s var(--ease);
+}
+
+.chip.active,
+.chip:hover {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: var(--white);
+}
+
+.student-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.student-cell strong {
+  color: var(--navy);
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.progress-bar-fill.strong,
+.level-meter-fill.level-extending,
+.level-meter-fill.level-beyond-ap {
+  background: linear-gradient(90deg, #1E7E34 0%, #28a745 100%);
+}
+
+.progress-bar-fill.watch,
+.level-meter-fill.level-developing,
+.level-meter-fill.level-proficient {
+  background: linear-gradient(90deg, #c9a84c 0%, #f4d03f 100%);
+}
+
+.progress-bar-fill.intervene,
+.level-meter-fill.level-emerging {
+  background: linear-gradient(90deg, #C0392B 0%, #e74c3c 100%);
+}
+
+@media (max-width: 980px) {
+  .selected-results-hero,
+  .results-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .score-circle {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .selected-results-hero {
+    padding: 24px 20px;
+  }
+
+  .score-circle {
+    width: 110px;
+    height: 110px;
+  }
+
+  .score-pct {
+    font-size: 1.9rem;
+  }
+
+  .dist-row {
+    grid-template-columns: 92px minmax(0, 1fr) 34px;
+    gap: 8px;
+  }
+
+  .table-wrap {
+    padding: 12px 14px 18px;
+  }
+
+  .filter-row {
+    padding: 0 14px 12px;
+  }
 }

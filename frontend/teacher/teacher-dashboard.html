@@ -1,19 +1,1197 @@
 <!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<html lang=""en-CA">
+    <title>Teacher Dashboard — Adaptive Test Engine</title>
+    <link rel="stylesheet" href="teacher-style.css" />
+  </head>
 
-<head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width"/>
-    <title>Dashboard - Adaptive Test Engine</title>
-    <link href="./teacher-style.css"/>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
-</head>
+  <body class="page-wrapper">
+    <!-- ============================================================
+       HEADER
+       ------------------------------------------------------------
+       The public sign-in page and the protected app share this header.
+       The dashboard navigation is hidden until the teacher signs in.
+       ============================================================ -->
+    <header class="site-header">
+      <div class="logo">Adaptive <span>Test&nbsp;Engine</span></div>
 
-<body>
-    <p>text</p>
-</body>
+      <!-- Protected navigation: only visible after sign-in -->
+      <!-- Protected navigation: only visible after sign-in -->
+      <nav
+        class="hide-mobile"
+        id="teacher-nav"
+        aria-label="Teacher navigation"
+        hidden
+      >
+        <button
+          class="nav-button active"
+          data-screen-button="dashboard"
+          onclick="showDashboard()"
+        >
+          Dashboard
+        </button>
+      </nav>
 
+      <!-- Teacher badge only appears after sign-in -->
+      <div class="user-badge" id="teacher-badge" hidden>
+        <span class="hide-mobile" id="teacher-name">Demo Teacher</span>
+        <div class="avatar" id="teacher-avatar">DT</div>
+        <button
+          class="btn btn-sm btn-outline light-outline"
+          onclick="signOutTeacher()"
+        >
+          Sign Out
+        </button>
+      </div>
+    </header>
+
+    <!-- ============================================================
+       PUBLIC SIGN-IN / OVERVIEW PAGE
+       ------------------------------------------------------------
+       This screen is separate from the protected dashboard.
+       The teacher cannot see course creation, tests, or results until
+       signInWithGoogle() creates a teacher session.
+       ============================================================ -->
+    <main class="public-login-page" id="login-screen">
+      <section class="public-hero">
+        <div class="public-hero-text">
+          <span class="badge badge-accent">AI-Powered Teaching Platform</span>
+
+          <h1>Personalized testing and review for every student.</h1>
+
+          <p>
+            Adaptive Test Engine helps teachers create smarter AP Computer
+            Science practice. The platform can generate custom questions,
+            suggest review topics, and push students at their individual level.
+          </p>
+
+          <div class="public-actions">
+            <button
+              class="btn btn-primary btn-lg google-btn wide-google"
+              onclick="signInWithGoogle()"
+            >
+              <span class="google-icon">G</span>
+              Sign in with Google
+            </button>
+          </div>
+
+          <div class="alert alert-warning">
+            Demo mode: this button currently simulates Google sign-in. Your
+            backend/auth team can connect real Google OAuth later.
+          </div>
+        </div>
+
+        <div class="public-hero-card">
+          <h2>What teachers can do</h2>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <strong>Create course spaces</strong>
+              <span
+                >Organize students, tests, assignments, and results by
+                class.</span
+              >
+            </div>
+
+            <div class="feature-item">
+              <strong>Build adaptive tests</strong>
+              <span
+                >Use multiple choice, free response, and AI-generated question
+                placeholders.</span
+              >
+            </div>
+
+            <div class="feature-item">
+              <strong>Support individual students</strong>
+              <span
+                >Give review suggestions based on each student’s current
+                level.</span
+              >
+            </div>
+
+            <div class="feature-item">
+              <strong>Track progress</strong>
+              <span
+                >View completed tests and send results to the reporting team’s
+                page.</span
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============================================================
+       PROTECTED APP WRAPPER
+       ------------------------------------------------------------
+       This entire app is hidden until the teacher signs in.
+       All creation/results tools are inside this protected wrapper.
+       ============================================================ -->
+    <main class="main-content" id="dashboard-screen" hidden>
+      <div class="container">
+        <!-- ========================================================
+           SCREEN 1: TEACHER DASHBOARD
+           --------------------------------------------------------
+           This is the teacher's landing page after sign-in.
+           It shows course cards and short course overviews.
+           ======================================================== -->
+        <section class="app-screen active-screen" id="screen-dashboard">
+          <section class="welcome-banner">
+            <div>
+              <h1>Teacher Dashboard</h1>
+              <p>
+                Select a course to manage students, create tests, access the
+                question bank, and view results.
+              </p>
+            </div>
+
+            <div class="banner-actions">
+              <button class="btn btn-accent" onclick="openCreateCoursePanel()">
+                + New Course
+              </button>
+            </div>
+          </section>
+
+          <!-- Summary cards -->
+          <section class="stats-strip">
+            <div class="stat-card">
+              <div class="stat-value" id="course-count">0</div>
+              <div class="stat-label">Courses</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-count">0</div>
+              <div class="stat-label">Students</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="test-count">0</div>
+              <div class="stat-label">Created Tests</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="completed-count">0</div>
+              <div class="stat-label">Completed Tests</div>
+            </div>
+          </section>
+
+          <!-- Create course panel -->
+          <section
+            class="card create-course-panel"
+            id="create-course-panel"
+            hidden
+          >
+            <div class="card-header">
+              <div>
+                <h2>Create Course</h2>
+                <p>Add a class section, current unit, and short overview.</p>
+              </div>
+
+              <button
+                class="btn btn-sm btn-outline"
+                onclick="closeCreateCoursePanel()"
+              >
+                Close
+              </button>
+            </div>
+
+            <form id="course-form" class="test-builder-grid">
+              <div class="form-group">
+                <label for="course-name">Course Name</label>
+                <input
+                  id="course-name"
+                  type="text"
+                  placeholder="Example: AP CSA Block B"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="course-code">Course Code</label>
+                <input
+                  id="course-code"
+                  type="text"
+                  placeholder="Example: CSA-B-2026"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="course-unit">Current Unit</label>
+                <input
+                  id="course-unit"
+                  type="text"
+                  placeholder="Example: Unit 7 — ArrayLists"
+                  required
+                />
+              </div>
+
+              <div class="form-group">
+                <label for="course-pacing">Pacing</label>
+                <select id="course-pacing">
+                  <option value="On Track">On Track</option>
+                  <option value="Needs Review">Needs Review</option>
+                  <option value="Ahead">Ahead</option>
+                </select>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="course-description">Course Overview</label>
+                <textarea
+                  id="course-description"
+                  placeholder="Short overview shown on the dashboard"
+                ></textarea>
+              </div>
+
+              <div class="full-width form-actions">
+                <button class="btn btn-primary" type="submit">
+                  Create Course
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <!-- Course cards -->
+          <section class="section-block">
+            <div class="section-heading">
+              <h2>Your Courses</h2>
+              <button class="btn btn-sm btn-outline" onclick="clearDemoData()">
+                Reset Demo Data
+              </button>
+            </div>
+
+            <div id="dashboard-course-list" class="course-grid"></div>
+          </section>
+        </section>
+
+        <!-- ========================================================
+           SCREEN 2: INDIVIDUAL COURSE PAGE
+           --------------------------------------------------------
+           Tests, question bank, students, and results are now inside
+           a selected course instead of being global navbar items.
+           ======================================================== -->
+        <section class="app-screen" id="screen-course-detail">
+          <button
+            class="btn btn-sm btn-outline back-button"
+            onclick="showDashboard()"
+          >
+            ← Back to Dashboard
+          </button>
+
+          <section class="course-hero">
+            <div>
+              <span class="badge badge-accent" id="course-detail-code"
+                >COURSE</span
+              >
+              <h1 id="course-detail-name">Course Name</h1>
+              <p id="course-detail-description">
+                Course overview appears here.
+              </p>
+            </div>
+
+            <div class="course-hero-stats">
+              <div>
+                <strong id="course-detail-students">0</strong>
+                <span>Students</span>
+              </div>
+
+              <div>
+                <strong id="course-detail-tests">0</strong>
+                <span>Tests</span>
+              </div>
+
+              <div>
+                <strong id="course-detail-unit">Unit</strong>
+                <span>Current Focus</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- Course sub-navigation -->
+          <div class="course-tabs">
+            <button
+              class="course-tab active"
+              data-course-tab="overview"
+              onclick="showCourseTab('overview')"
+            >
+              Overview
+            </button>
+
+            <button
+              class="course-tab"
+              data-course-tab="students"
+              onclick="showCourseTab('students')"
+            >
+              Students
+            </button>
+
+            <button
+              class="course-tab"
+              data-course-tab="tests"
+              onclick="showCourseTab('tests')"
+            >
+              Tests & Assignments
+            </button>
+
+            <button
+              class="course-tab"
+              data-course-tab="question-bank"
+              onclick="showCourseTab('question-bank')"
+            >
+              Question Bank
+            </button>
+
+            <button
+              class="course-tab"
+              data-course-tab="results"
+              onclick="showCourseTab('results')"
+            >
+              Results
+            </button>
+          </div>
+
+          <!-- COURSE TAB: OVERVIEW -->
+          <section
+            class="course-tab-screen active-course-tab"
+            id="course-tab-overview"
+          >
+            <section class="teacher-grid">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Course Overview</h2>
+                    <p>Quick class snapshot.</p>
+                  </div>
+                </div>
+
+                <div id="course-overview-content" class="preview-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>AI Suggestions</h2>
+                    <p>Placeholder suggestions for teacher review.</p>
+                  </div>
+                </div>
+
+                <div class="suggestion-list">
+                  <div class="suggestion-item">
+                    <strong>Recommended Review</strong>
+                    <p>
+                      Several students may benefit from more practice with
+                      tracing loops and array indexes.
+                    </p>
+                  </div>
+
+                  <div class="suggestion-item">
+                    <strong>Next Question Set</strong>
+                    <p>
+                      Generate medium-difficulty multiple choice questions for
+                      the current unit.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </section>
+
+          <!-- COURSE TAB: STUDENTS -->
+          <section class="course-tab-screen" id="course-tab-students">
+            <section class="teacher-grid">
+              <!-- Add student by email -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Add Student by Email</h2>
+                    <p>Sends a placeholder confirmation email.</p>
+                  </div>
+
+                  <span class="badge badge-navy">Invite</span>
+                </div>
+
+                <form id="student-email-form" class="stacked-form">
+                  <div class="form-group">
+                    <label for="student-email-name">Student Name</label>
+                    <input
+                      id="student-email-name"
+                      type="text"
+                      placeholder="Example: Jane Student"
+                      required
+                    />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="student-email-input">Student Email</label>
+                    <input
+                      id="student-email-input"
+                      type="email"
+                      placeholder="student@example.com"
+                      required
+                    />
+                  </div>
+
+                  <button class="btn btn-primary" type="submit">
+                    Send Confirmation Email
+                  </button>
+                </form>
+              </div>
+
+              <!-- Add student by code/request -->
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Join Code Requests</h2>
+                    <p>Students can request to join using this course code.</p>
+                  </div>
+
+                  <span class="badge badge-slate" id="course-join-code"
+                    >CODE</span
+                  >
+                </div>
+
+                <div class="alert alert-info">
+                  Students enter the course code. Their request appears below
+                  for teacher approval.
+                </div>
+
+                <form id="student-request-form" class="stacked-form">
+                  <div class="form-group">
+                    <label for="request-student-name"
+                      >Simulate Student Request</label
+                    >
+                    <input
+                      id="request-student-name"
+                      type="text"
+                      placeholder="Example: New Student"
+                      required
+                    />
+                  </div>
+
+                  <button class="btn btn-outline" type="submit">
+                    Add Join Request
+                  </button>
+                </form>
+
+                <div id="join-request-list" class="request-list"></div>
+              </div>
+            </section>
+
+            <section class="section-block">
+              <div class="section-heading">
+                <h2>Class Roster</h2>
+              </div>
+
+              <div id="course-student-list" class="course-grid"></div>
+            </section>
+          </section>
+
+          <!-- COURSE TAB: TESTS -->
+          <section class="course-tab-screen" id="course-tab-tests">
+            <div class="section-heading">
+              <h2>Create Test or Assignment</h2>
+              <span class="badge badge-accent">Draft Mode</span>
+            </div>
+
+            <div class="card">
+              <form id="test-form" class="test-builder-grid">
+                <div class="form-group">
+                  <label for="test-title">Test Title</label>
+                  <input
+                    id="test-title"
+                    type="text"
+                    placeholder="Example: Sorting Algorithms Quiz"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="test-time">Time Limit</label>
+                  <input
+                    id="test-time"
+                    type="number"
+                    min="1"
+                    value="30"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="test-difficulty">Difficulty</label>
+                  <select id="test-difficulty">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Hard">Hard</option>
+                    <option value="Adaptive">Adaptive</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="test-type">Type</label>
+                  <select id="test-type">
+                    <option value="Test">Test</option>
+                    <option value="Assignment">Assignment</option>
+                    <option value="Review">Review</option>
+                  </select>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="test-description">Description</label>
+                  <textarea
+                    id="test-description"
+                    placeholder="Describe what this test or assignment covers"
+                  ></textarea>
+                </div>
+
+                <div class="form-group full-width">
+                  <label for="test-file-input">Upload Test PDF</label>
+                  <div
+                    class="file-drop-zone"
+                    id="test-file-drop-zone"
+                    tabindex="0"
+                    role="button"
+                    aria-label="Upload a PDF test file"
+                  >
+                    <input
+                      id="test-file-input"
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      hidden
+                    />
+                    <div class="file-drop-content">
+                      <strong>Drag and drop a PDF here</strong>
+                      <span>or click to choose a file from your computer</span>
+                    </div>
+                  </div>
+                  <div id="test-file-preview" class="file-preview" hidden></div>
+                </div>
+
+                <div class="full-width">
+                  <h3>Questions in This Draft</h3>
+                  <div id="draft-question-list" class="question-list"></div>
+                </div>
+
+                <div class="full-width form-actions">
+                  <button class="btn btn-primary btn-lg" type="submit">
+                    Create Test
+                  </button>
+
+                  <button
+                    class="btn btn-outline btn-lg"
+                    type="button"
+                    onclick="showCourseTab('question-bank')"
+                  >
+                    Open Question Bank
+                  </button>
+
+                  <button
+                    class="btn btn-outline btn-lg"
+                    type="button"
+                    onclick="clearDraftQuestions()"
+                  >
+                    Clear Questions
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <section class="section-block">
+              <div class="section-heading">
+                <h2>Created Tests & Assignments</h2>
+              </div>
+
+              <div class="card table-card">
+                <table class="teacher-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th>Questions</th>
+                      <th>Time</th>
+                      <th>Difficulty</th>
+                      <th>File</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+
+                  <tbody id="course-test-table-body"></tbody>
+                </table>
+              </div>
+            </section>
+          </section>
+
+          <!-- COURSE TAB: QUESTION BANK -->
+          <section class="course-tab-screen" id="course-tab-question-bank">
+            <div class="section-heading">
+              <h2>Question Bank</h2>
+              <button
+                class="btn btn-accent"
+                onclick="generateAIQuestionPlaceholder()"
+              >
+                ✨ Generate AI Question
+              </button>
+            </div>
+
+            <div class="question-bank-layout">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Multiple Choice Questions</h2>
+                    <p>Add MCQs to the current test draft.</p>
+                  </div>
+                </div>
+
+                <div id="mc-question-bank-list" class="bank-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Free Response Questions</h2>
+                    <p>Add FRQs to the current test draft.</p>
+                  </div>
+                </div>
+
+                <div id="frq-question-bank-list" class="bank-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- COURSE TAB: RESULTS -->
+          <section class="course-tab-screen" id="course-tab-results">
+            <div class="section-heading">
+              <h2>Results</h2>
+              <span class="badge badge-accent">Assessment Reports</span>
+            </div>
+
+            <section class="results-placeholder results-report-hero">
+              <div>
+                <span class="badge badge-accent">Assessment Center</span>
+                <h1>RESULTS</h1>
+                <p>
+                  Select an assessment to view completion status, class
+                  averages, individual student results, and topic-level
+                  understanding.
+                </p>
+              </div>
+            </section>
+
+            <section
+              class="stats-strip results-summary-strip assessment-detail-section"
+              hidden
+            >
+              <div class="stat-card">
+                <div class="stat-value" id="results-completed-count">0</div>
+                <div class="stat-label">Completed</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-value" id="results-average-score">—</div>
+                <div class="stat-label">Selected Average</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-value" id="results-primary-level">—</div>
+                <div class="stat-label">Most Common Level</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-value" id="results-beyond-count">0</div>
+                <div class="stat-label">Beyond AP</div>
+              </div>
+            </section>
+
+            <section class="section-block">
+              <div class="section-heading">
+                <div>
+                  <h2>Assessments</h2>
+                  <p>Select a test or assignment to view its results.</p>
+                </div>
+                <span class="badge badge-slate">Course Assessments</span>
+              </div>
+
+              <div
+                id="assessment-results-list"
+                class="assessment-results-grid"
+              ></div>
+            </section>
+
+            <section
+              class="section-block selected-assessment-panel assessment-detail-section"
+              id="selected-assessment-panel"
+              hidden
+            >
+              <section class="selected-results-hero">
+                <div>
+                  <div class="hero-topline">
+                    <span
+                      class="badge badge-accent"
+                      id="selected-assessment-type-badge"
+                      >Assessment</span
+                    >
+                    <span
+                      class="badge badge-info"
+                      id="selected-assessment-difficulty-badge"
+                      >Difficulty</span
+                    >
+                  </div>
+
+                  <h2 id="selected-assessment-title">Assessment Results</h2>
+                  <p id="selected-assessment-summary">
+                    Choose an assessment above to view student completion and
+                    scores.
+                  </p>
+
+                  <div
+                    class="selected-results-meta"
+                    id="selected-assessment-meta"
+                  ></div>
+                  <div
+                    class="selected-results-summary"
+                    id="selected-assessment-ai-summary"
+                  ></div>
+                </div>
+
+                <div
+                  class="score-circle"
+                  aria-label="Selected assessment average"
+                >
+                  <div
+                    class="score-pct"
+                    id="selected-assessment-average-circle"
+                  >
+                    —
+                  </div>
+                  <div class="score-label">Class Average</div>
+                </div>
+              </section>
+
+              <div class="assessment-student-columns">
+                <div class="card table-card">
+                  <div class="mini-card-heading">
+                    <h3>Completed Students</h3>
+                    <p>Students with submitted results for this assessment.</p>
+                  </div>
+
+                  <table class="teacher-table">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Score</th>
+                        <th>Understanding</th>
+                        <th>Date</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+
+                    <tbody id="assessment-completed-student-list"></tbody>
+                  </table>
+                </div>
+
+                <div class="card missing-students-card">
+                  <div class="mini-card-heading">
+                    <h3>Not Completed Yet</h3>
+                    <p>
+                      Placeholder completion data. Replace with backend
+                      submission status later.
+                    </p>
+                  </div>
+
+                  <div
+                    id="assessment-missing-student-list"
+                    class="missing-student-list"
+                  ></div>
+                </div>
+              </div>
+            </section>
+
+            <section
+              class="results-insight-grid section-block assessment-detail-section"
+              hidden
+            >
+              <div class="card" id="ai-class-review-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>AI Class Review</h2>
+                    <p>
+                      Automatic class-level summary for the selected assessment.
+                    </p>
+                  </div>
+                  <span class="badge badge-accent">AI Brief</span>
+                </div>
+
+                <div class="alert alert-warning" id="teacher-alert"></div>
+
+                <div class="ai-review-body">
+                  <div>
+                    <h3>Summary</h3>
+                    <p id="ai-summary"></p>
+                  </div>
+
+                  <div>
+                    <h3>Recommended Actions</h3>
+                    <ul class="mini-list" id="teacher-actions"></ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" id="score-distribution-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>Level Distribution</h2>
+                    <p>
+                      How the class is distributed across understanding bands.
+                    </p>
+                  </div>
+                  <span class="badge badge-info">Cohort View</span>
+                </div>
+
+                <div class="distribution-wrap" id="level-distribution"></div>
+              </div>
+            </section>
+
+            <section
+              class="results-layout-grid section-block assessment-detail-section"
+              hidden
+            >
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Class Topic Averages</h2>
+                    <p>
+                      Average topic performance across completed student
+                      submissions for the selected assessment.
+                    </p>
+                  </div>
+                  <span class="badge badge-navy">Class Topics</span>
+                </div>
+
+                <div id="topic-understanding-list" class="topic-list"></div>
+              </div>
+
+              <div class="card table-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>Question-Level Analysis</h2>
+                    <p>
+                      Combined question performance across the selected
+                      assessment.
+                    </p>
+                  </div>
+                  <span class="badge badge-slate">Diagnostics</span>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="teacher-table">
+                    <thead>
+                      <tr>
+                        <th>Question</th>
+                        <th>Topic</th>
+                        <th>Class Average</th>
+                        <th>Evidence</th>
+                      </tr>
+                    </thead>
+                    <tbody id="item-analysis-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section class="section-block assessment-detail-section" hidden>
+              <div class="section-heading">
+                <h2>Understanding Levels</h2>
+                <span class="badge badge-slate">Selected Assessment</span>
+              </div>
+
+              <div
+                id="understanding-level-grid"
+                class="understanding-grid"
+              ></div>
+            </section>
+
+            <section class="section-block assessment-detail-section" hidden>
+              <div class="card table-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>Class Performance Table</h2>
+                    <p>Filter completed student results by support level.</p>
+                  </div>
+                  <span class="badge badge-info">Roster</span>
+                </div>
+
+                <div class="filter-row" id="student-filters">
+                  <button
+                    class="chip active"
+                    type="button"
+                    onclick="filterAssessmentStudents('all', this)"
+                  >
+                    All Students
+                  </button>
+                  <button
+                    class="chip"
+                    type="button"
+                    onclick="filterAssessmentStudents('high', this)"
+                  >
+                    High Performers
+                  </button>
+                  <button
+                    class="chip"
+                    type="button"
+                    onclick="filterAssessmentStudents('mid', this)"
+                  >
+                    On Track
+                  </button>
+                  <button
+                    class="chip"
+                    type="button"
+                    onclick="filterAssessmentStudents('risk', this)"
+                  >
+                    Needs Support
+                  </button>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="teacher-table">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Band</th>
+                        <th>Score</th>
+                        <th>Focus Area</th>
+                        <th>AI Flag</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="student-results-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </section>
+        </section>
+
+        <!-- ========================================================
+           SCREEN 3: TEST DETAIL PAGE
+           --------------------------------------------------------
+           This is a simple placeholder test page. It gives you a
+           place to send teachers after they click "Open" on a test.
+           ======================================================== -->
+        <section class="app-screen" id="screen-test-detail">
+          <button
+            class="btn btn-sm btn-outline back-button"
+            onclick="returnToCurrentCourse()"
+          >
+            ← Back to Course
+          </button>
+
+          <section class="results-placeholder test-detail-hero">
+            <h1 id="test-detail-title">TEST PAGE</h1>
+            <p id="test-detail-description">
+              Open a created test to view its file, settings, and questions.
+            </p>
+
+            <div class="form-actions center-actions">
+              <button
+                class="btn btn-accent"
+                onclick="showResultsForCurrentTest()"
+              >
+                View Results
+              </button>
+
+              <button
+                class="btn btn-outline light-outline"
+                onclick="returnToCurrentCourse()"
+              >
+                Back to Course
+              </button>
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="teacher-grid">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Test Details</h2>
+                    <p>Metadata from the test creation form.</p>
+                  </div>
+                </div>
+
+                <div id="test-detail-meta" class="preview-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Attached PDF</h2>
+                    <p>View the uploaded assessment file.</p>
+                  </div>
+                </div>
+
+                <div id="test-detail-file" class="file-detail-card"></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>PDF Preview</h2>
+                  <p>
+                    The uploaded PDF appears here when the browser supports
+                    inline PDF viewing.
+                  </p>
+                </div>
+              </div>
+
+              <div id="test-pdf-viewer" class="pdf-viewer empty-state compact">
+                <p>No PDF attached to this test yet.</p>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ========================================================
+           SCREEN 4: INDIVIDUAL STUDENT RESULT PAGE
+           --------------------------------------------------------
+           Placeholder report view for a single student's assessment.
+           Later, replace the placeholder result objects in JS with
+           backend/API data while keeping the rendering functions.
+           ======================================================== -->
+        <section class="app-screen" id="screen-student-result-detail">
+          <button
+            class="btn btn-sm btn-outline back-button"
+            onclick="returnToSelectedAssessmentResults()"
+          >
+            ← Back to Assessment Results
+          </button>
+
+          <section class="student-result-hero results-placeholder">
+            <div>
+              <span class="badge badge-accent" id="student-result-course-code"
+                >COURSE</span
+              >
+              <h1 id="student-result-page-name">Student Result</h1>
+              <p id="student-result-page-summary">
+                Select a completed student from an assessment to view their
+                report.
+              </p>
+            </div>
+          </section>
+
+          <section class="stats-strip results-summary-strip">
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-score">—</div>
+              <div class="stat-label">Score</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-level">—</div>
+              <div class="stat-label">Understanding</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-earned">—</div>
+              <div class="stat-label">Points</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-date">—</div>
+              <div class="stat-label">Submitted</div>
+            </div>
+          </section>
+
+          <section class="student-result-actions">
+            <button
+              class="btn btn-accent"
+              onclick="openAssessmentFromStudentResult()"
+            >
+              View Assessment
+            </button>
+            <button
+              class="btn btn-outline"
+              onclick="returnToSelectedAssessmentResults()"
+            >
+              Back to Assessment Results
+            </button>
+          </section>
+
+          <section class="results-layout-grid section-block">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Skill Breakdown</h2>
+                  <p>Question/topic evidence for this student.</p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-skill-list"
+                class="student-topic-list"
+              ></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Teacher Notes</h2>
+                  <p>Placeholder recommendations generated from the result.</p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-recommendations"
+                class="suggestion-list"
+              ></div>
+            </div>
+          </section>
+
+          <section class="student-submission-grid section-block">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Assessment Reference</h2>
+                  <p>Quick access back to the test page for this submission.</p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-test-link-card"
+                class="preview-list"
+              ></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Student Answer Preview</h2>
+                  <p>
+                    Placeholder answer data for now. Replace this with real
+                    submission text later.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-answer-preview"
+                class="answer-preview-list"
+              ></div>
+            </div>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      Adaptive Test Engine &mdash; Teacher Portal &nbsp;|&nbsp; Academic Year
+      2025–26
+    </footer>
+
+    <script src="teacher-dashboard.js"></script>
+  </body>
 </html>

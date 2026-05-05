@@ -7,8 +7,6 @@
   <link rel="stylesheet" href="style.css" />
   <script src="auth.js"></script>
   <script>
-    // Session guard: bounce to login if no session.
-    // Runs before <body> paints so unauthorized users never see the dashboard.
     (function () {
       const session = window.requireSession && window.requireSession();
       if (session && session.student) {
@@ -17,21 +15,7 @@
     })();
   </script>
 
-  <!--
-    dashboard.html — Student Home Portal
-    ─────────────────────────────────────────────────────────────
-    PURPOSE   : Shows the student's available tests, recent scores,
-                and their adaptive skill level per subject.
-    GROUPS    : DB/Session Team: populate test cards from the DB.
-                AI/Question Bank: surface "recommended" tests based
-                on student's performance history.
-                Data & Reporting: the stats strip at the top reads
-                from the reporting API.
-    ─────────────────────────────────────────────────────────────
-  -->
-
   <style>
-    /* ── Dashboard layout ── */
     .page-wrapper {
       display: flex;
       flex-direction: column;
@@ -43,7 +27,6 @@
       padding: 36px 0 60px;
     }
 
-    /* Welcome banner */
     .welcome-banner {
       background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
       color: var(--white);
@@ -72,7 +55,6 @@
     .welcome-banner p  { color: var(--slate-light); font-size: 0.9rem; }
     .welcome-banner .accent-text { color: var(--accent); }
 
-    /* Stats strip */
     .stats-strip {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -100,7 +82,6 @@
     .stat-card .stat-label { font-size: 0.78rem; color: var(--slate); text-transform: uppercase; letter-spacing: 0.5px; }
     .stat-card .stat-sub   { font-size: 0.75rem; color: var(--accent); font-weight: 600; margin-top: 4px; }
 
-    /* Section headings */
     .section-heading {
       display: flex;
       align-items: baseline;
@@ -111,7 +92,6 @@
     .section-heading a  { font-size: 0.82rem; color: var(--slate); }
     .section-heading a:hover { color: var(--navy); }
 
-    /* Test cards grid */
     .test-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -141,7 +121,7 @@
       background: var(--navy);
     }
     .test-card.accent-border::before { background: var(--accent); }
-    .test-card.slate-border::before  { background: var(--slate);  }
+    .test-card.hard-border::before   { background: var(--danger); }
 
     .test-card:hover {
       box-shadow: var(--shadow-md);
@@ -171,7 +151,6 @@
     }
     .test-card .test-info-row span { display: flex; align-items: center; gap: 4px; }
 
-    /* Difficulty indicator */
     .difficulty-dots {
       display: flex;
       gap: 3px;
@@ -186,10 +165,7 @@
     .difficulty-dots.medium .dot.filled { background: var(--accent); }
     .difficulty-dots.hard   .dot.filled { background: var(--danger); }
 
-    /* Skill level meter */
-    .skill-meter {
-      margin-top: 4px;
-    }
+    .skill-meter { margin-top: 4px; }
     .skill-meter .skill-label {
       display: flex;
       justify-content: space-between;
@@ -199,7 +175,6 @@
     }
     .skill-meter .skill-label strong { color: var(--navy); }
 
-    /* Recent activity table */
     .activity-table {
       width: 100%;
       border-collapse: collapse;
@@ -230,27 +205,22 @@
 
     @media (max-width: 768px) {
       .welcome-banner { flex-direction: column; text-align: center; }
-      .activity-table { display: none; } /* simplify on mobile */
+      .activity-table { display: none; }
     }
   </style>
 </head>
 <body class="page-wrapper">
 
-  <!-- ══════════════════════════════════════════════
-       HEADER / NAVIGATION
-       Integration Team: Populate .user-name and
-       .avatar with real student data from session.
-  ══════════════════════════════════════════════ -->
   <header class="site-header">
     <div class="logo">Adaptive <span>Test&nbsp;Engine</span></div>
 
     <nav class="hide-mobile" aria-label="Main navigation">
       <a href="dashboard.html" class="active">Dashboard</a>
-      <a href="#" data-action="nav-results">My Results</a>
-      <a href="#" data-action="nav-help">Help</a>
+      <a href="all_tests.html" data-action="nav-all-tests">All Tests</a>
+      <a href="history.html" data-action="nav-history">Test History</a>
+      <a href="help.html" data-action="nav-help">Help</a>
     </nav>
 
-    <!-- User info — DB Team: replace placeholder text with real session data -->
     <div class="user-badge">
       <span class="hide-mobile user-name" data-bind="student-name">Jane Student</span>
       <div class="avatar" data-bind="student-avatar" aria-label="Student avatar">JS</div>
@@ -261,18 +231,10 @@
     </div>
   </header>
 
-  <!-- ══════════════════════════════════════════════
-       MAIN CONTENT
-  ══════════════════════════════════════════════ -->
   <main class="main-content">
     <div class="container">
 
       <!-- Welcome Banner -->
-      <!--
-        DB Team: Replace "Jane" with session student name.
-        Data Team: Replace "Level 4" and the tagline with
-        the student's actual adaptive level from the DB.
-      -->
       <div class="welcome-banner" data-widget="welcome-banner">
         <div>
           <h1>Good morning, <span class="accent-text" data-bind="student-first-name">Jane</span>.</h1>
@@ -286,47 +248,12 @@
         </div>
       </div>
 
-      <!-- Stats Strip -->
-      <!--
-        Data & Reporting Team: These four numbers should
-        be fetched from GET /api/student/stats
-      -->
-      <div class="stats-strip" data-widget="stats-strip">
-        <div class="stat-card">
-          <div class="stat-value" data-bind="tests-completed">12</div>
-          <div class="stat-label">Tests Completed</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" data-bind="avg-score">78%</div>
-          <div class="stat-label">Average Score</div>
-          <div class="stat-sub">↑ +4% this week</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" data-bind="streak">5</div>
-          <div class="stat-label">Day Streak</div>
-          <div class="stat-sub">Keep it going!</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" data-bind="adaptive-level">4</div>
-          <div class="stat-label">Adaptive Level</div>
-          <div class="stat-sub">Proficient</div>
-        </div>
-      </div>
-
-      <!-- ── Available Tests ── -->
+      <!-- Available Tests -->
       <div class="section-heading">
         <h2>Available Tests</h2>
-        <a href="#" data-action="view-all-tests">View all →</a>
+        <a href="all_tests.html" data-action="view-all-tests">View all →</a>
       </div>
 
-      <!--
-        DB Team: Dynamically render these test cards from
-        GET /api/tests/available?studentId={id}
-        Each card needs: testId, title, subject, questionCount,
-        timeLimit, difficulty, description
-        AI/Question Bank: Mark "Recommended" badge on tests
-        that match the student's adaptive profile.
-      -->
       <div class="test-grid" data-widget="test-grid" id="test-grid">
 
         <!-- Test Card 1: Recommended -->
@@ -415,21 +342,20 @@
           </div>
         </div>
 
-        <!-- Test Card 3: Locked / Not yet available -->
+        <!-- Test Card 3: Now unlocked -->
         <div
-          class="test-card slate-border"
+          class="test-card hard-border"
           data-test-id="TEST-003"
           data-subject="oop"
           data-difficulty="hard"
-          data-available="false"
-          style="opacity: 0.65; cursor: not-allowed;"
+          data-time-limit="40"
+          onclick="startTest('TEST-003')"
           role="button"
-          aria-label="Test locked: Object-Oriented Programming"
-          aria-disabled="true"
+          aria-label="Start test: Object-Oriented Programming"
           tabindex="0"
         >
           <div class="test-meta">
-            <span class="badge badge-slate">🔒 Locked</span>
+            <span class="badge badge-slate">Unit 5</span>
             <div class="difficulty-dots hard" title="Hard difficulty" aria-label="Difficulty: Hard">
               <div class="dot filled"></div>
               <div class="dot filled"></div>
@@ -441,28 +367,33 @@
           <h3>Object-Oriented Programming</h3>
           <p class="test-desc">
             Inheritance, polymorphism, and encapsulation.
-            Unlocks after you complete the Data Structures test.
+            Advanced AP CS A topics with scenario-based questions.
           </p>
           <div class="test-info-row">
             <span>📄 20 questions</span>
             <span>⏱ 40 min</span>
-            <span>🔒 Requires TEST-002</span>
+            <span>🧠 Adaptive</span>
+          </div>
+          <div class="skill-meter">
+            <div class="skill-label">
+              <span>Your skill level</span>
+              <strong data-bind="skill-oop">45%</strong>
+            </div>
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width: 45%"></div>
+            </div>
           </div>
         </div>
 
       </div>
       <!-- end #test-grid -->
 
-      <!-- ── Recent Activity ── -->
+      <!-- Recent Activity -->
       <div class="section-heading">
         <h2>Recent Activity</h2>
-        <a href="#" data-action="view-full-history">Full history →</a>
+        <a href="history.html" data-action="view-full-history">Full history →</a>
       </div>
 
-      <!--
-        Data & Reporting Team: Populate from
-        GET /api/student/history?limit=5
-      -->
       <div class="card" style="padding:0; overflow:hidden;">
         <table class="activity-table" data-widget="activity-table">
           <thead>
@@ -476,7 +407,6 @@
             </tr>
           </thead>
           <tbody id="activity-tbody">
-            <!-- PLACEHOLDER rows — DB Team: render dynamically -->
             <tr data-result-id="RES-099" data-test-id="TEST-001">
               <td>Sorting Algorithms — Attempt 3</td>
               <td class="secondary">Apr 14, 2026</td>
@@ -506,49 +436,28 @@
       </div>
 
     </div>
-    <!-- end .container -->
   </main>
 
-  <!-- Footer -->
   <footer class="site-footer">
     Adaptive Test Engine &mdash; AP Computer Science Program &nbsp;|&nbsp; Academic Year 2025–26
   </footer>
 
-  <!-- ══════════════════════════════════════════════
-       JAVASCRIPT — Dashboard Logic (Placeholder)
-  ══════════════════════════════════════════════ -->
   <script>
-    /**
-     * startTest(testId)
-     * ─────────────────────────────────────────────
-     * Navigates to test.html with the selected test's ID.
-     * DB/Session Team: Store testId in sessionStorage so
-     * test.html can fetch the right question set.
-     *
-     * Integration Team: Before navigating, you may want to
-     * POST /api/sessions/start { testId, studentId } to
-     * create a server-side session record.
-     */
     function startTest(testId) {
-      // Don't start locked tests
-      const card = document.querySelector(`[data-test-id="${testId}"]`);
-      if (card && card.dataset.available === 'false') {
-        alert('This test is not yet available. Complete the prerequisite first.');
-        return;
-      }
-
-      // Store context for test.html
       sessionStorage.setItem('activeTestId', testId);
+
+      const topicMap = {
+        'TEST-001': 'sorting algorithms, merge sort, quicksort, and time complexity',
+        'TEST-002': 'data structures, arrays, ArrayLists, and 2D arrays in Java',
+        'TEST-003': 'object-oriented programming, inheritance, and polymorphism in Java',
+        'recommended': 'AP Computer Science A Java programming'
+      };
+      sessionStorage.setItem('testTopic', topicMap[testId] || 'AP Computer Science A Java programming');
+
       console.log('[Dashboard] Starting test:', testId);
       window.location.href = 'test.html';
     }
 
-    /**
-     * handleLogout()
-     * ─────────────────────────────────────────────
-     * Integration Team: also call POST /api/auth/logout once the
-     * backend endpoint exists, then clear local session.
-     */
     function handleLogout() {
       if (confirm('Are you sure you want to sign out?')) {
         (window.clearSession || sessionStorage.clear.bind(sessionStorage))();
@@ -556,7 +465,6 @@
       }
     }
 
-    // Populate header and welcome banner with the signed-in student.
     (function populateStudent() {
       const s = window.__STUDENT__;
       if (!s) return;
@@ -572,16 +480,14 @@
       }
     })();
 
-    // Allow keyboard activation of test cards (accessibility) .
     document.querySelectorAll('.test-card[role="button"]').forEach(card => {
       card.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           card.click();
         }
-      }); 
+      });
     });
-    // test
   </script>
 
 </body>

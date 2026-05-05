@@ -1,3 +1,7 @@
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -22,6 +26,9 @@ public class Gemini {
     }
 
     public String generateReply(String message) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new IllegalStateException("Missing GEMINI_API_KEY environment variable.");
+        }
 
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/"
                 + urlEncode(model)
@@ -65,11 +72,19 @@ public class Gemini {
                     continue;
                 }
 
+                // 🔑 FIXED: real JSON parsing
                 String extracted = extractReply(body);
 
+                //Re-enable for final product
+                /*
                 if (extracted == null || extracted.isBlank()) {
                     System.out.println("Empty Gemini response, retrying...");
                     continue;
+                }*/
+
+                //Faster for testing/dev process
+                if (extracted == null || extracted.isBlank()) {
+                    throw new RuntimeException("Empty Gemini response");
                 }
 
                 return extracted;
@@ -79,37 +94,49 @@ public class Gemini {
 
                 try {
                     Thread.sleep(500);
-                } catch (InterruptedException ignored) {}
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                }
             }
         }
 
-        return "Gemini error: request failed after " + maxAttempts + " attempts";
+        throw new RuntimeException(
+                "Gemini error: request failed after " + maxAttempts + " attempts"
+        );
     }
 
     // ─────────────────────────────
-    // SAFE TEXT EXTRACTION
+    // FIXED JSON EXTRACTION
     // ─────────────────────────────
     private String extractReply(String json) {
 
-        if (json == null || json.isEmpty()) {
+        try {
+            JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+
+            JsonArray candidates = root.getAsJsonArray("candidates");
+            if (candidates == null || candidates.size() == 0) {
+                System.out.println("No candidates in response:\n" + json);
+                return null;
+            }
+
+            JsonObject first = candidates.get(0).getAsJsonObject();
+            JsonObject content = first.getAsJsonObject("content");
+            JsonArray parts = content.getAsJsonArray("parts");
+
+            if (parts == null || parts.size() == 0) {
+                System.out.println("No parts in response:\n" + json);
+                return null;
+            }
+
+            String text = parts.get(0).getAsJsonObject().get("text").getAsString();
+
+            return text;
+
+        } catch (Exception e) {
+            System.out.println("Failed to parse Gemini JSON:");
+            System.out.println(json);
             return null;
         }
-
-        int index = json.indexOf("\"text\":");
-        if (index == -1) {
-            System.out.println("Unexpected Gemini response:\n" + json);
-            return null;
-        }
-
-        int start = json.indexOf("\"", index + 7);
-        if (start == -1) return null;
-
-        start++;
-
-        int end = json.indexOf("\"", start);
-        if (end == -1) return null;
-
-        return json.substring(start, end);
     }
 
     // ─────────────────────────────

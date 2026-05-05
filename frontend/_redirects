@@ -1,0 +1,5 @@
+/ /student/ 302
+/chat /chat/index.html 200
+/chat/ /chat/index.html 200
+/student /student/index.html 200
+/student/ /student/index.html 200

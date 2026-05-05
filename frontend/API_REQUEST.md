@@ -6,11 +6,12 @@ The frontend should send user input to the backend instead of calling Gemini dir
 
 Flow:
 
-`Frontend -> /api/chat -> Backend -> Gemini -> Backend -> Frontend`
+`Frontend -> /api/gemini -> Backend -> Gemini -> Backend -> Frontend`
 
 ## Endpoint
 
-- URL: `http://localhost:8080/api/chat`
+- Local URL: `http://localhost:8080/api/gemini`
+- Production URL: `https://cs.andromedax.org/api/gemini`
 - Method: `POST`
 - Headers:
 
@@ -45,7 +46,7 @@ Content-Type: application/json
 ## Fetch Example
 
 ```ts
-const response = await fetch("http://localhost:8080/api/chat", {
+const response = await fetch("http://localhost:8080/api/gemini", {
   method: "POST",
   headers: {
     "Content-Type": "application/json",

@@ -1,6 +1,6 @@
 public final class Config {
     private static final int DEFAULT_PORT = 8080;
-    private static final String DEFAULT_MODEL = "gemini-3-flash-preview";
+    private static final String DEFAULT_MODEL = "gemini-2.0-flash";
 
     private Config() {
     }

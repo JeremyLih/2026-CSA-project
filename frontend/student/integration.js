@@ -2,7 +2,8 @@ const API_BASE_URL = "http://localhost:8080";
 
 //
 // LOGIN
-// 
+// TODO: backend has no /api/login endpoint yet; revisit when auth is wired up.
+//
 async function handleLoginSubmit(event) {
     event.preventDefault();
 
@@ -11,7 +12,7 @@ async function handleLoginSubmit(event) {
         password: document.getElementById('password').value
     };
 
-    const response = await fetch(`${API_BASE_URL}/login`, {
+    const response = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData)
@@ -24,17 +25,17 @@ async function handleLoginSubmit(event) {
     sessionStorage.setItem("sessionId", data.sessionId);
 }
 
-// 
+//
 // START TEST
 //
 async function startTest(testId) {
 
-    const testRequest = { id: testId };
+    const studentId = sessionStorage.getItem('studentId') || 'STU-DEMO';
 
-    const response = await fetch(`${API_BASE_URL}/startTest`, {
+    const response = await fetch(`${API_BASE_URL}/api/start-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testRequest)
+        body: JSON.stringify({ studentId, testId })
     });
 
     const data = await response.json();
@@ -43,14 +44,16 @@ async function startTest(testId) {
     sessionStorage.setItem("sessionId", data.sessionId);
 }
 
-// 
+//
 // RESULTS
-// 
+// TODO: backend has no /api/results/:id endpoint yet; results are still
+// persisted client-side via sessionStorage in test.html.
+//
 async function showFinalScore() {
 
     const resultId = sessionStorage.getItem('lastResultId');
 
-    const response = await fetch(`${API_BASE_URL}/results/${resultId}`);
+    const response = await fetch(`${API_BASE_URL}/api/results/${resultId}`);
 
     const scoreData = await response.json();
 
@@ -58,8 +61,8 @@ async function showFinalScore() {
 }
 
 //
-// NEXT QUESTION 
-// 
+// NEXT QUESTION
+//
 async function getNextQuestion() {
 
     console.log("Next button clicked!");
@@ -72,7 +75,7 @@ async function getNextQuestion() {
         difficulty: Number(difficulty)
     };
 
-    const response = await fetch(`${API_BASE_URL}/nextQuestion`, {
+    const response = await fetch(`${API_BASE_URL}/api/next-question`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -84,10 +87,10 @@ async function getNextQuestion() {
 
     console.log("Question received:", data);
 
-    // ── UPDATE QUESTION TEXT ──
+    // UPDATE QUESTION TEXT
     document.getElementById("questionText").innerHTML = data.text;
 
-    // ── UPDATE CHOICES (IMPORTANT ADDITION) ──
+    // UPDATE CHOICES 
     const list = document.getElementById("choices-list");
     list.innerHTML = "";
 
@@ -105,7 +108,7 @@ async function getNextQuestion() {
         list.appendChild(li);
     });
 
-    // ── SAVE NEW DIFFICULTY ──
+    // SAVE NEW DIFFICULTY
     sessionStorage.setItem("difficulty", data.difficulty);
 }
 

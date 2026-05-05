@@ -368,7 +368,7 @@
   }
 
   async function fetchQuestionInto(index, adaptation = {}) {
-    const response = await fetch(`${API_BASE}/api/questions/next`, {
+    const response = await fetch(`${API_BASE}/api/next-question`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -397,7 +397,7 @@
     renderDifficultyPath();
 
     try {
-      const startResp = await fetch(`${API_BASE}/api/sessions/start`, {
+      const startResp = await fetch(`${API_BASE}/api/start-session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -95,7 +95,7 @@ public class Main {
                 }
 
                 //For testing only
-                int unit = Integer.parseInt(getQueryParam(exchange, "unit", "3"));
+                /*int unit = Integer.parseInt(getQueryParam(exchange, "unit", "3"));
                 int difficulty = Integer.parseInt(getQueryParam(exchange, "difficulty", "3"));
 
                 String unitContext = getUnitContext(unit);
@@ -112,7 +112,72 @@ public class Main {
                         question.correctChoice()
                 );
 
-                sendJson(exchange, 200, question);
+                sendJson(exchange, 200, question);*/
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
+        server.createContext("/api/join-class", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("POST")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                java.util.Map<?, ?> req = gson.fromJson(body, java.util.Map.class);
+
+                String classId = (String) req.get("classId");
+                String userId = (String) req.get("userId");
+
+                Database.joinClass(classId, userId);
+
+                send(exchange, 200, "{\"status\":\"joined\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
+        server.createContext("/api/my-classes", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("GET")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                String userId = getQueryParam(exchange, "userId", null);
+
+                if (userId == null) {
+                    sendJson(exchange, 400, new ErrorResponse("userId required"));
+                    return;
+                }
+
+                String result = Database.getUserClasses(userId);
+
+                send(exchange, 200, result);
 
             } catch (Exception e) {
                 e.printStackTrace();
@@ -180,6 +245,38 @@ public class Main {
                 sessionStore.saveSession(session.sessionId(), session);
 
                 sendJson(exchange, 200, question);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                try {
+                    sendJson(exchange, 500, new ErrorResponse(e.getMessage()));
+                } catch (Exception ignored) {}
+            }
+        });
+
+        server.createContext("/api/test-create-classroom", exchange -> {
+            try {
+                cors(exchange);
+
+                if (exchange.getRequestMethod().equalsIgnoreCase("OPTIONS")) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!exchange.getRequestMethod().equalsIgnoreCase("GET")) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                //Testing
+                String result = Database.insertClassroom(
+                        "Test Physics Class",
+                        "Physics",
+                        "Automated backend test class",
+                        "System Test"
+                );
+
+                send(exchange, 200, result);
 
             } catch (Exception e) {
                 e.printStackTrace();

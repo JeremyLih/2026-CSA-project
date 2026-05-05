@@ -14,6 +14,115 @@ public class Database {
     // ─────────────────────────────
     private static final HikariDataSource pool;
 
+    public static String insertClassroom(String name, String subject, String description, String teacherName) {
+
+        String sql = """
+        INSERT INTO classes (name, subject, description, teacher_name)
+        VALUES (?, ?, ?, ?)
+        RETURNING id, join_code
+        """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, name);
+            stmt.setString(2, subject);
+            stmt.setString(3, description);
+            stmt.setString(4, teacherName);
+
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return """
+                {
+                    "id": "%s",
+                    "join_code": "%s"
+                }
+                """.formatted(
+                        rs.getString("id"),
+                        rs.getString("join_code")
+                );
+            }
+
+            throw new RuntimeException("Failed to create classroom");
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void joinClass(String classId, String userId) {
+
+        String sql = """
+        INSERT INTO class_members (class_id, user_id, role)
+        VALUES (?, ?, 'student')
+        ON CONFLICT (class_id, user_id) DO NOTHING
+        """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, classId);
+            stmt.setString(2, userId);
+
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to join class: " + e.getMessage());
+        }
+    }
+
+    public static String getUserClasses(String userId) {
+
+        String sql = """
+        SELECT c.id, c.name, c.subject, c.description, c.teacher_name, c.join_code
+        FROM classes c
+        JOIN class_members cm ON cm.class_id = c.id
+        WHERE cm.user_id = ?
+        """;
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, userId);
+
+            ResultSet rs = stmt.executeQuery();
+
+            StringBuilder json = new StringBuilder("[");
+            boolean first = true;
+
+            while (rs.next()) {
+                if (!first) json.append(",");
+                first = false;
+
+                json.append("""
+                {
+                    "id": "%s",
+                    "name": "%s",
+                    "subject": "%s",
+                    "description": "%s",
+                    "teacher_name": "%s",
+                    "join_code": "%s"
+                }
+                """.formatted(
+                        rs.getString("id"),
+                        rs.getString("name"),
+                        rs.getString("subject"),
+                        rs.getString("description"),
+                        rs.getString("teacher_name"),
+                        rs.getString("join_code")
+                ));
+            }
+
+            json.append("]");
+            return json.toString();
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     static {
         try {
             Class.forName("org.postgresql.Driver"); // ADD THIS LINE

@@ -6,6 +6,7 @@
 
     <title>Teacher Dashboard — Adaptive Test Engine</title>
     <link rel="stylesheet" href="teacher-style.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
 
   <body class="page-wrapper">
@@ -68,19 +69,40 @@
             suggest review topics, and push students at their individual level.
           </p>
 
-          <div class="public-actions">
+          <div class="public-actions teacher-google-actions">
+            <!--
+              Google Identity Services renders the real Google button here.
+              If Google fails to load, the styled fallback button below still works.
+            -->
+            <div
+              id="teacher-google-signin-container"
+              class="teacher-google-signin-container"
+              hidden
+            ></div>
+
             <button
               class="btn btn-primary btn-lg google-btn wide-google"
+              id="teacher-google-signin-stub"
               onclick="signInWithGoogle()"
             >
               <span class="google-icon">G</span>
               Sign in with Google
             </button>
+
+            <button
+              class="btn btn-outline btn-sm teacher-demo-button"
+              id="teacher-demo-signin-button"
+              onclick="signInDemoTeacher()"
+              hidden
+            >
+              Continue in Demo Mode
+            </button>
           </div>
 
-          <div class="alert alert-warning">
-            Demo mode: this button currently simulates Google sign-in. Your
-            backend/auth team can connect real Google OAuth later.
+          <div class="alert alert-info" id="teacher-auth-message">
+            Teachers can sign in with Google. If the backend is not connected
+            yet, the page safely uses the Google profile claims as a temporary
+            frontend session.
           </div>
         </div>
 
@@ -244,6 +266,36 @@
                   id="course-description"
                   placeholder="Short overview shown on the dashboard"
                 ></textarea>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="course-curriculum-input">Curriculum PDF</label>
+                <div
+                  class="file-drop-zone curriculum-drop-zone"
+                  id="course-curriculum-drop-zone"
+                  tabindex="0"
+                  role="button"
+                  aria-label="Upload a curriculum PDF for this course"
+                >
+                  <input
+                    id="course-curriculum-input"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    hidden
+                  />
+                  <div class="file-drop-content">
+                    <strong>Add a curriculum guide for AI context</strong>
+                    <span
+                      >Optional: upload the course outline, unit guide, or
+                      syllabus PDF.</span
+                    >
+                  </div>
+                </div>
+                <div
+                  id="course-curriculum-preview"
+                  class="file-preview"
+                  hidden
+                ></div>
               </div>
 
               <div class="full-width form-actions">
@@ -546,29 +598,6 @@
                   ></textarea>
                 </div>
 
-                <div class="form-group full-width">
-                  <label for="test-file-input">Upload Test PDF</label>
-                  <div
-                    class="file-drop-zone"
-                    id="test-file-drop-zone"
-                    tabindex="0"
-                    role="button"
-                    aria-label="Upload a PDF test file"
-                  >
-                    <input
-                      id="test-file-input"
-                      type="file"
-                      accept="application/pdf,.pdf"
-                      hidden
-                    />
-                    <div class="file-drop-content">
-                      <strong>Drag and drop a PDF here</strong>
-                      <span>or click to choose a file from your computer</span>
-                    </div>
-                  </div>
-                  <div id="test-file-preview" class="file-preview" hidden></div>
-                </div>
-
                 <div class="full-width">
                   <h3>Questions in This Draft</h3>
                   <div id="draft-question-list" class="question-list"></div>
@@ -612,7 +641,6 @@
                       <th>Questions</th>
                       <th>Time</th>
                       <th>Difficulty</th>
-                      <th>File</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -627,14 +655,82 @@
           <!-- COURSE TAB: QUESTION BANK -->
           <section class="course-tab-screen" id="course-tab-question-bank">
             <div class="section-heading">
-              <h2>Question Bank</h2>
-              <button
-                class="btn btn-accent"
-                onclick="generateAIQuestionPlaceholder()"
-              >
-                ✨ Generate AI Question
-              </button>
+              <div>
+                <h2>Question Bank</h2>
+                <p>
+                  Use saved questions or generate AI placeholders for the
+                  current draft.
+                </p>
+              </div>
+              <span class="badge badge-accent">AI Assisted</span>
             </div>
+
+            <section class="card ai-generator-card">
+              <div class="ai-generator-copy">
+                <span class="badge badge-accent">Generate with AI</span>
+                <h2>Build draft questions from the course curriculum</h2>
+                <p>
+                  Choose a topic, format, difficulty, and amount. The demo adds
+                  clean placeholders now; the backend can replace these with
+                  real AI output later.
+                </p>
+              </div>
+
+              <div class="ai-generator-controls">
+                <div class="form-group">
+                  <label for="ai-topic-input">Topic / Skill</label>
+                  <input
+                    id="ai-topic-input"
+                    type="text"
+                    placeholder="Example: ArrayList traversal"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="ai-question-type">Question Type</label>
+                  <select id="ai-question-type">
+                    <option value="Multiple Choice">Multiple Choice</option>
+                    <option value="Free Response">Free Response</option>
+                    <option value="Mixed">Mixed</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="ai-difficulty">Difficulty</label>
+                  <select id="ai-difficulty">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Hard">Hard</option>
+                    <option value="Adaptive">Adaptive</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="ai-question-count">Amount</label>
+                  <input
+                    id="ai-question-count"
+                    type="number"
+                    min="1"
+                    max="5"
+                    value="3"
+                  />
+                </div>
+              </div>
+
+              <div class="ai-generator-actions">
+                <button
+                  class="btn btn-accent btn-lg"
+                  type="button"
+                  onclick="generateAIQuestionPlaceholder()"
+                >
+                  ✨ Generate Draft Questions
+                </button>
+                <p id="ai-generator-context-note">
+                  AI will use the selected course unit and curriculum PDF when
+                  available.
+                </p>
+              </div>
+            </section>
 
             <div class="question-bank-layout">
               <div class="card">
@@ -1027,30 +1123,12 @@
               <div class="card">
                 <div class="card-header">
                   <div>
-                    <h2>Attached PDF</h2>
-                    <p>View the uploaded assessment file.</p>
+                    <h2>Questions</h2>
+                    <p>Question draft attached to this assessment.</p>
                   </div>
                 </div>
 
-                <div id="test-detail-file" class="file-detail-card"></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="section-block">
-            <div class="card">
-              <div class="card-header">
-                <div>
-                  <h2>PDF Preview</h2>
-                  <p>
-                    The uploaded PDF appears here when the browser supports
-                    inline PDF viewing.
-                  </p>
-                </div>
-              </div>
-
-              <div id="test-pdf-viewer" class="pdf-viewer empty-state compact">
-                <p>No PDF attached to this test yet.</p>
+                <div id="test-detail-question-list" class="question-list"></div>
               </div>
             </div>
           </section>

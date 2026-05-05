@@ -7,9 +7,9 @@
          ============================================================ */
 
 const APP_CONFIG = {
-  storageKey: "teacherDashboardDataV2",
+  storageKey: "teacherDashboardDataV3",
   maxPdfSizeInMb: 8,
-  acceptedTestFileTypes: ["application/pdf"],
+  acceptedCurriculumFileTypes: ["application/pdf"],
 };
 
 const STORAGE_KEY = APP_CONFIG.storageKey;
@@ -18,7 +18,7 @@ let selectedCourseId = null;
 let selectedTestId = null;
 let selectedResultId = null;
 let draftQuestions = [];
-let selectedTestFile = null;
+let selectedCourseFile = null;
 let appHistory = [];
 let appHistoryIndex = -1;
 let isRestoringNavigation = false;
@@ -238,6 +238,7 @@ function loadData() {
         pacing: "On Track",
         description:
           "Students are working on ArrayLists, traversal patterns, and common AP-style algorithms.",
+        curriculumAttachment: null,
       },
       {
         id: "COURSE-002",
@@ -247,6 +248,7 @@ function loadData() {
         pacing: "Needs Review",
         description:
           "Students are reviewing arrays, indexing errors, and basic sorting algorithm traces.",
+        curriculumAttachment: null,
       },
     ],
 
@@ -293,7 +295,6 @@ function loadData() {
         description:
           "Covers selection sort, insertion sort, merge sort, and algorithm tracing.",
         questions: [questionBank[0], questionBank[2]],
-        attachment: null,
       },
       {
         id: "TEST-002",
@@ -305,7 +306,6 @@ function loadData() {
         description:
           "Checks Java array indexing, traversal, and ArrayList methods.",
         questions: [questionBank[1]],
-        attachment: null,
       },
     ],
   };
@@ -315,13 +315,15 @@ function normalizeTeacherData(data) {
   // Keeps older localStorage demo data from crashing after new fields are added.
   return {
     teacher: data.teacher || null,
-    courses: data.courses || [],
+    courses: (data.courses || []).map((course) => ({
+      ...course,
+      curriculumAttachment: course.curriculumAttachment || null,
+    })),
     students: data.students || [],
     joinRequests: data.joinRequests || [],
     tests: (data.tests || []).map((test) => ({
       ...test,
       questions: test.questions || [],
-      attachment: test.attachment || null,
     })),
   };
 }
@@ -356,7 +358,7 @@ function signOutTeacher() {
   selectedTestId = null;
   selectedResultId = null;
   draftQuestions = [];
-  selectedTestFile = null;
+  selectedCourseFile = null;
 
   saveData();
   renderApp();
@@ -385,7 +387,7 @@ function renderApp() {
   renderSelectedCourse();
   renderDraftQuestions();
   renderQuestionBank();
-  setupTestFileUpload();
+  setupCourseCurriculumUpload();
 }
 
 function getInitials(name) {
@@ -665,7 +667,11 @@ function renderDashboard() {
               <p>${course.description}</p>
 
               <div class="unit-pill">
-                Current Unit: ${course.unit}
+                Current Unit: ${escapeHTML(course.unit)}
+              </div>
+
+              <div class="curriculum-pill ${course.curriculumAttachment ? "has-file" : ""}">
+                ${course.curriculumAttachment ? `Curriculum: ${escapeHTML(course.curriculumAttachment.name)}` : "No curriculum PDF yet"}
               </div>
 
               <div class="course-meta">
@@ -752,6 +758,11 @@ function renderCourseOverview(course, students, tests, results) {
             <strong>Assessments</strong>
             <span>${tests.length} created, ${results.length} completed results</span>
           </div>
+
+          <div class="preview-item">
+            <strong>Curriculum PDF</strong>
+            <span>${course.curriculumAttachment ? `${course.curriculumAttachment.name} · ${formatBytes(course.curriculumAttachment.size)}` : "No curriculum file attached yet"}</span>
+          </div>
         `;
 }
 
@@ -823,7 +834,7 @@ function renderCourseTests(tests) {
   if (tests.length === 0) {
     tableBody.innerHTML = `
             <tr>
-              <td colspan="8" class="empty-table">No tests or assignments created yet.</td>
+              <td colspan="7" class="empty-table">No tests or assignments created yet.</td>
             </tr>
           `;
     return;
@@ -838,7 +849,6 @@ function renderCourseTests(tests) {
               <td>${(test.questions || []).length}</td>
               <td class="secondary">${test.timeLimit} min</td>
               <td><span class="badge badge-slate">${test.difficulty}</span></td>
-              <td>${renderAttachmentBadge(test.attachment)}</td>
               <td><span class="badge badge-success">Created</span></td>
               <td>
                 <button class="btn btn-sm btn-primary" onclick="showTestDetail('${test.id}')">
@@ -849,14 +859,6 @@ function renderCourseTests(tests) {
           `;
     })
     .join("");
-}
-
-function renderAttachmentBadge(attachment) {
-  if (!attachment) {
-    return '<span class="badge badge-slate">No file</span>';
-  }
-
-  return `<span class="badge badge-accent">${attachment.name}</span>`;
 }
 
 function renderTestDetail(test) {
@@ -883,43 +885,37 @@ function renderTestDetail(test) {
     </div>
   `;
 
-  renderTestAttachment(test.attachment);
+  renderTestQuestionList(test.questions || []);
 }
 
-function renderTestAttachment(attachment) {
-  const fileCard = document.getElementById("test-detail-file");
-  const viewer = document.getElementById("test-pdf-viewer");
+function renderTestQuestionList(questions) {
+  const list = document.getElementById("test-detail-question-list");
 
-  if (!attachment) {
-    fileCard.innerHTML = `
-      <div class="empty-state compact">
-        <p>No PDF uploaded for this test.</p>
-      </div>
-    `;
-    viewer.className = "pdf-viewer empty-state compact";
-    viewer.innerHTML = "<p>No PDF attached to this test yet.</p>";
+  if (!list) {
     return;
   }
 
-  fileCard.innerHTML = `
-    <div class="preview-item">
-      <strong>${attachment.name}</strong>
-      <span>${formatBytes(attachment.size)} · Uploaded ${attachment.uploadedAt}</span>
-    </div>
-    <div class="form-actions">
-      <a class="btn btn-primary" href="${attachment.dataUrl}" target="_blank" rel="noopener">
-        Open PDF in New Tab
-      </a>
-    </div>
-  `;
+  if (questions.length === 0) {
+    list.innerHTML = `
+      <div class="empty-state compact">
+        <p>No questions were added to this assessment.</p>
+      </div>
+    `;
+    return;
+  }
 
-  viewer.className = "pdf-viewer";
-  viewer.innerHTML = `
-    <iframe
-      src="${attachment.dataUrl}"
-      title="PDF preview for ${attachment.name}"
-    ></iframe>
-  `;
+  list.innerHTML = questions
+    .map((question, index) => {
+      return `
+        <div class="question-item">
+          <div>
+            <strong>${index + 1}. ${escapeHTML(question.question)}</strong>
+            <p>${escapeHTML(question.type)} · ${escapeHTML(question.topic || "General")} · ${escapeHTML(question.difficulty || "Adaptive")}</p>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
 }
 
 function renderCourseResults(results) {
@@ -2122,19 +2118,45 @@ function addBankQuestion(questionId) {
 
 function generateAIQuestionPlaceholder() {
   const course = getSelectedCourse();
+  const topicInput = document.getElementById("ai-topic-input");
+  const typeInput = document.getElementById("ai-question-type");
+  const difficultyInput = document.getElementById("ai-difficulty");
+  const countInput = document.getElementById("ai-question-count");
 
-  const aiQuestion = {
-    id: crypto.randomUUID(),
-    type: "AI Generated Placeholder",
-    topic: course ? course.unit : "Current Unit",
-    difficulty: "Adaptive",
-    question:
-      "AI-generated question placeholder based on the selected course and student levels.",
-    correct: "AI-generated answer/rubric placeholder",
-    source: "ai",
-  };
+  const topic =
+    topicInput && topicInput.value.trim()
+      ? topicInput.value.trim()
+      : course
+        ? course.unit
+        : "Current Unit";
+  const selectedType = typeInput ? typeInput.value : "Mixed";
+  const difficulty = difficultyInput ? difficultyInput.value : "Adaptive";
+  const count = Math.min(5, Math.max(1, Number(countInput?.value) || 1));
+  const hasCurriculum = Boolean(course && course.curriculumAttachment);
 
-  draftQuestions.push(aiQuestion);
+  const createdQuestions = Array.from({ length: count }, (_, index) => {
+    const type =
+      selectedType === "Mixed"
+        ? index % 2 === 0
+          ? "Multiple Choice"
+          : "Free Response"
+        : selectedType;
+
+    return {
+      id: crypto.randomUUID(),
+      type: `AI Generated ${type}`,
+      topic,
+      difficulty,
+      question: `${type} placeholder ${index + 1} on ${topic}${hasCurriculum ? " using the uploaded curriculum context" : " using the current course unit"}.`,
+      correct:
+        type === "Multiple Choice"
+          ? "AI-generated answer choice/rationale placeholder"
+          : "AI-generated rubric placeholder",
+      source: "ai",
+    };
+  });
+
+  draftQuestions.push(...createdQuestions);
   renderDraftQuestions();
   showCourseTab("tests");
 }
@@ -2150,17 +2172,17 @@ function clearDraftQuestions() {
 }
 
 /* ============================================================
-         TEST PDF UPLOAD
+         COURSE CURRICULUM PDF UPLOAD
          ------------------------------------------------------------
-         This is a frontend-only demo upload. The PDF is converted to
-         a data URL and saved with the test in localStorage. For real
-         production use, upload the File object to a backend/storage bucket
-         and save only the returned file URL on the test object.
+         Frontend-only demo upload. The curriculum PDF is saved with
+         the course so AI generation can reference course context later.
+         In production, upload the File object to backend storage and
+         save only the returned URL/metadata on the course object.
          ============================================================ */
 
-function setupTestFileUpload() {
-  const dropZone = document.getElementById("test-file-drop-zone");
-  const fileInput = document.getElementById("test-file-input");
+function setupCourseCurriculumUpload() {
+  const dropZone = document.getElementById("course-curriculum-drop-zone");
+  const fileInput = document.getElementById("course-curriculum-input");
 
   if (!dropZone || !fileInput || dropZone.dataset.ready === "true") {
     return;
@@ -2179,7 +2201,7 @@ function setupTestFileUpload() {
 
   fileInput.addEventListener("change", async (event) => {
     const file = event.target.files[0];
-    await handleTestFile(file);
+    await handleCourseCurriculumFile(file);
   });
 
   ["dragenter", "dragover"].forEach((eventName) => {
@@ -2198,24 +2220,24 @@ function setupTestFileUpload() {
 
   dropZone.addEventListener("drop", async (event) => {
     const file = event.dataTransfer.files[0];
-    await handleTestFile(file);
+    await handleCourseCurriculumFile(file);
   });
 }
 
-async function handleTestFile(file) {
+async function handleCourseCurriculumFile(file) {
   if (!file) {
     return;
   }
 
-  const validation = validateTestFile(file);
+  const validation = validateCurriculumFile(file);
 
   if (!validation.success) {
     alert(validation.message);
-    clearSelectedTestFile();
+    clearSelectedCourseFile();
     return;
   }
 
-  selectedTestFile = {
+  selectedCourseFile = {
     id: crypto.randomUUID(),
     name: file.name,
     type: file.type || "application/pdf",
@@ -2224,13 +2246,13 @@ async function handleTestFile(file) {
     dataUrl: await readFileAsDataUrl(file),
   };
 
-  renderSelectedTestFile();
+  renderSelectedCourseFile();
 }
 
-function validateTestFile(file) {
+function validateCurriculumFile(file) {
   const maxBytes = APP_CONFIG.maxPdfSizeInMb * 1024 * 1024;
   const isPdf =
-    APP_CONFIG.acceptedTestFileTypes.includes(file.type) ||
+    APP_CONFIG.acceptedCurriculumFileTypes.includes(file.type) ||
     file.name.toLowerCase().endsWith(".pdf");
 
   if (!isPdf) {
@@ -2257,14 +2279,14 @@ function readFileAsDataUrl(file) {
   });
 }
 
-function renderSelectedTestFile() {
-  const preview = document.getElementById("test-file-preview");
+function renderSelectedCourseFile() {
+  const preview = document.getElementById("course-curriculum-preview");
 
   if (!preview) {
     return;
   }
 
-  if (!selectedTestFile) {
+  if (!selectedCourseFile) {
     preview.hidden = true;
     preview.innerHTML = "";
     return;
@@ -2273,24 +2295,24 @@ function renderSelectedTestFile() {
   preview.hidden = false;
   preview.innerHTML = `
     <div>
-      <strong>${selectedTestFile.name}</strong>
-      <span>${formatBytes(selectedTestFile.size)}</span>
+      <strong>${escapeHTML(selectedCourseFile.name)}</strong>
+      <span>${formatBytes(selectedCourseFile.size)} · Used as AI curriculum context</span>
     </div>
-    <button class="btn btn-sm btn-danger" type="button" onclick="clearSelectedTestFile()">
+    <button class="btn btn-sm btn-danger" type="button" onclick="clearSelectedCourseFile()">
       Remove PDF
     </button>
   `;
 }
 
-function clearSelectedTestFile() {
-  selectedTestFile = null;
+function clearSelectedCourseFile() {
+  selectedCourseFile = null;
 
-  const fileInput = document.getElementById("test-file-input");
+  const fileInput = document.getElementById("course-curriculum-input");
   if (fileInput) {
     fileInput.value = "";
   }
 
-  renderSelectedTestFile();
+  renderSelectedCourseFile();
 }
 
 function formatBytes(bytes) {
@@ -2323,12 +2345,14 @@ document.getElementById("course-form").addEventListener("submit", (event) => {
     unit: document.getElementById("course-unit").value.trim(),
     pacing: document.getElementById("course-pacing").value,
     description: document.getElementById("course-description").value.trim(),
+    curriculumAttachment: selectedCourseFile ? { ...selectedCourseFile } : null,
   };
 
   teacherData.courses.push(course);
   saveData();
 
   event.target.reset();
+  clearSelectedCourseFile();
   closeCreateCoursePanel();
   renderApp();
 });
@@ -2408,10 +2432,8 @@ document.getElementById("test-form").addEventListener("submit", (event) => {
     return;
   }
 
-  if (draftQuestions.length === 0 && !selectedTestFile) {
-    alert(
-      "Please add at least one question or upload a PDF before creating the test.",
-    );
+  if (draftQuestions.length === 0) {
+    alert("Please add at least one question before creating the test.");
     return;
   }
 
@@ -2424,12 +2446,10 @@ document.getElementById("test-form").addEventListener("submit", (event) => {
     difficulty: document.getElementById("test-difficulty").value,
     description: document.getElementById("test-description").value.trim(),
     questions: [...draftQuestions],
-    attachment: selectedTestFile ? { ...selectedTestFile } : null,
   };
 
   teacherData.tests.push(test);
   draftQuestions = [];
-  clearSelectedTestFile();
 
   saveData();
 
@@ -2517,10 +2537,318 @@ function clearDemoData() {
   selectedTestId = null;
   selectedResultId = null;
   draftQuestions = [];
-  selectedTestFile = null;
+  selectedCourseFile = null;
 
   renderApp();
   showDashboard();
 }
 
 renderApp();
+
+/* ============================================================
+   TEACHER GOOGLE SIGN-IN ADDITION
+   ------------------------------------------------------------
+   This keeps the existing demo sign-in code above, but upgrades the
+   public teacher page so it can use the same Google Identity Services
+   style of login as the student side.
+
+   What it does:
+   1. Renders a real Google button into #teacher-google-signin-container.
+   2. Converts the Google ID token into a teacher session.
+   3. Tries the backend first: POST /api/auth/google { idToken }.
+   4. Falls back to the Google profile claims if the backend is not ready.
+   ============================================================ */
+
+const TEACHER_AUTH_CONFIG = {
+  CLIENT_ID:
+    "680126421530-3l43rbetvdghr01pq0ecnfpecb49cikj.apps.googleusercontent.com",
+  BACKEND_URL: "http://localhost:8080",
+  ALLOWED_EMAIL_DOMAIN: "smus.ca",
+};
+
+const TEACHER_SESSION_KEYS = {
+  token: "teacherAuthToken",
+  teacher: "teacherProfile",
+};
+
+// Keep a copy of the original demo sign-in so nothing is deleted.
+const signInWithGoogleDemoOriginal = signInWithGoogle;
+
+function isTeacherClientIdConfigured() {
+  return (
+    TEACHER_AUTH_CONFIG.CLIENT_ID &&
+    TEACHER_AUTH_CONFIG.CLIENT_ID !== "PENDING_CLIENT_ID"
+  );
+}
+
+function decodeTeacherJwtPayload(idToken) {
+  const [, payload] = idToken.split(".");
+
+  if (!payload) {
+    throw new Error("Invalid Google credential: missing JWT payload.");
+  }
+
+  const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+  const json = decodeURIComponent(
+    atob(base64)
+      .split("")
+      .map((char) => "%" + ("00" + char.charCodeAt(0).toString(16)).slice(-2))
+      .join(""),
+  );
+
+  return JSON.parse(json);
+}
+
+function saveTeacherSession({ token, teacher }) {
+  sessionStorage.setItem(TEACHER_SESSION_KEYS.token, token);
+  sessionStorage.setItem(TEACHER_SESSION_KEYS.teacher, JSON.stringify(teacher));
+}
+
+function getTeacherSession() {
+  const token = sessionStorage.getItem(TEACHER_SESSION_KEYS.token);
+  const rawTeacher = sessionStorage.getItem(TEACHER_SESSION_KEYS.teacher);
+
+  if (!token || !rawTeacher) {
+    return null;
+  }
+
+  try {
+    return {
+      token,
+      teacher: JSON.parse(rawTeacher),
+    };
+  } catch (error) {
+    console.warn("[Teacher Auth] Saved session could not be read.", error);
+    return null;
+  }
+}
+
+function clearTeacherSession() {
+  sessionStorage.removeItem(TEACHER_SESSION_KEYS.token);
+  sessionStorage.removeItem(TEACHER_SESSION_KEYS.teacher);
+}
+
+function setTeacherAuthMessage(message, kind = "info") {
+  const messageBox = document.getElementById("teacher-auth-message");
+
+  if (!messageBox) {
+    return;
+  }
+
+  messageBox.className = `alert alert-${kind}`;
+  messageBox.textContent = message;
+}
+
+function applyTeacherSession(teacher, token) {
+  teacherData.teacher = {
+    name: teacher.name || teacher.email || "Teacher",
+    email: teacher.email || "teacher@example.com",
+    avatar: teacher.avatar || teacher.picture || null,
+  };
+
+  saveTeacherSession({ token, teacher: teacherData.teacher });
+  saveData();
+  renderApp();
+  resetNavigationHistory();
+  showDashboard();
+}
+
+async function onTeacherGoogleCredential(response) {
+  const idToken = response.credential;
+  let fallbackTeacher;
+
+  try {
+    const claims = decodeTeacherJwtPayload(idToken);
+    const email = claims.email || "";
+
+    if (
+      TEACHER_AUTH_CONFIG.ALLOWED_EMAIL_DOMAIN &&
+      !email.endsWith(`@${TEACHER_AUTH_CONFIG.ALLOWED_EMAIL_DOMAIN}`)
+    ) {
+      alert(
+        `Please sign in with your school account (@${TEACHER_AUTH_CONFIG.ALLOWED_EMAIL_DOMAIN}).`,
+      );
+      return;
+    }
+
+    fallbackTeacher = {
+      id: claims.sub,
+      name: claims.name || email,
+      email,
+      avatar: claims.picture || null,
+    };
+  } catch (error) {
+    console.error("[Teacher Auth] Failed to decode Google credential.", error);
+    alert("Sign-in failed: could not read the Google response.");
+    return;
+  }
+
+  try {
+    const responseFromBackend = await fetch(
+      `${TEACHER_AUTH_CONFIG.BACKEND_URL}/api/auth/google`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken, role: "teacher" }),
+      },
+    );
+
+    if (responseFromBackend.ok) {
+      const data = await responseFromBackend.json();
+      const backendTeacher = data.teacher || data.user || fallbackTeacher;
+      applyTeacherSession(backendTeacher, data.token || idToken);
+      return;
+    }
+
+    console.warn(
+      "[Teacher Auth] Backend rejected token. Using Google claims fallback.",
+    );
+  } catch (error) {
+    console.warn(
+      "[Teacher Auth] Backend unreachable. Using Google claims fallback.",
+      error,
+    );
+  }
+
+  applyTeacherSession(fallbackTeacher, idToken);
+}
+
+function initTeacherGoogleAuth() {
+  const container = document.getElementById("teacher-google-signin-container");
+  const stub = document.getElementById("teacher-google-signin-stub");
+  const demoButton = document.getElementById("teacher-demo-signin-button");
+
+  if (!container) {
+    return;
+  }
+
+  if (!isTeacherClientIdConfigured()) {
+    setTeacherAuthMessage(
+      "Google sign-in needs a real Google Client ID. Demo mode is still available.",
+      "warning",
+    );
+
+    if (demoButton) {
+      demoButton.hidden = false;
+    }
+    return;
+  }
+
+  if (
+    typeof google === "undefined" ||
+    !google.accounts ||
+    !google.accounts.id
+  ) {
+    setTeacherAuthMessage(
+      "Google sign-in did not load. Try opening the project through localhost/Live Server instead of directly as a file.",
+      "warning",
+    );
+
+    if (demoButton) {
+      demoButton.hidden = false;
+    }
+    return;
+  }
+
+  google.accounts.id.initialize({
+    client_id: TEACHER_AUTH_CONFIG.CLIENT_ID,
+    callback: onTeacherGoogleCredential,
+    auto_select: false,
+    hosted_domain: TEACHER_AUTH_CONFIG.ALLOWED_EMAIL_DOMAIN,
+  });
+
+  container.innerHTML = "";
+  google.accounts.id.renderButton(container, {
+    theme: "outline",
+    size: "large",
+    width: 360,
+    text: "signin_with",
+    shape: "rectangular",
+  });
+
+  container.hidden = false;
+  container.style.display = "flex";
+
+  if (stub) {
+    stub.hidden = true;
+    stub.style.display = "none";
+  }
+
+  if (demoButton) {
+    demoButton.hidden = false;
+  }
+}
+
+function restoreTeacherSessionIfPresent() {
+  const session = getTeacherSession();
+
+  if (!session) {
+    return;
+  }
+
+  teacherData.teacher = session.teacher;
+  saveData();
+  renderApp();
+  showDashboard();
+}
+
+function signInDemoTeacher() {
+  signInWithGoogleDemoOriginal();
+}
+
+// Upgrade the existing button name without deleting the original function.
+signInWithGoogle = function upgradedTeacherGoogleSignIn() {
+  if (typeof google !== "undefined" && google.accounts && google.accounts.id) {
+    google.accounts.id.prompt();
+    return;
+  }
+
+  setTeacherAuthMessage(
+    "Google sign-in is not available right now, so demo mode opened instead.",
+    "warning",
+  );
+  signInWithGoogleDemoOriginal();
+};
+
+const signOutTeacherOriginal = signOutTeacher;
+signOutTeacher = function upgradedTeacherSignOut() {
+  clearTeacherSession();
+
+  if (typeof google !== "undefined" && google.accounts && google.accounts.id) {
+    google.accounts.id.disableAutoSelect();
+  }
+
+  signOutTeacherOriginal();
+};
+
+window.onTeacherGoogleCredential = onTeacherGoogleCredential;
+window.initTeacherGoogleAuth = initTeacherGoogleAuth;
+window.getTeacherSession = getTeacherSession;
+window.clearTeacherSession = clearTeacherSession;
+window.signInDemoTeacher = signInDemoTeacher;
+
+(function autoInitTeacherGoogleAuth() {
+  function pollForGoogle() {
+    if (!document.getElementById("teacher-google-signin-container")) {
+      return;
+    }
+
+    if (
+      typeof google !== "undefined" &&
+      google.accounts &&
+      google.accounts.id
+    ) {
+      initTeacherGoogleAuth();
+      restoreTeacherSessionIfPresent();
+      return;
+    }
+
+    setTimeout(pollForGoogle, 50);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", pollForGoogle);
+  } else {
+    pollForGoogle();
+  }
+})();

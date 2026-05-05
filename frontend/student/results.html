@@ -792,8 +792,8 @@
               <div class="hero-metric-label">Adaptive Level</div>
             </div>
             <div>
-              <div class="hero-metric-value" id="hero-class-compare">+11 vs class avg</div>
-              <div class="hero-metric-label">Class Comparison</div>
+              <div class="hero-metric-value" id="hero-review-progress">67%</div>
+              <div class="hero-metric-label">Review Progress</div>
             </div>
           </div>
         </div>
@@ -1239,14 +1239,12 @@
       const incorrect = data.questions.filter(q => q.status === 'incorrect' || q.status === 'skipped');
       const aiPriority = data.questions.filter(q => q.aiPriority);
       const hardMisses = incorrect.filter(q => q.difficulty >= 3);
-      const classDelta = data.score - data.classAverage;
-
       const studentSummary = strongTopics.length && weakTopics.length
         ? `${data.student.firstName} is showing stable command of ${strongTopics[0].name.toLowerCase()} and broad Big-O reasoning, but still loses points when questions require choosing the best algorithm for a specific input pattern. The result is strong overall, yet not fully stable at the highest adaptive level.`
         : `${data.student.firstName} completed the attempt with mostly stable performance and a few targeted gaps that should be addressed before the next unit check.`;
 
       const studentCallouts = [
-        `You finished ${classDelta >= 0 ? `${classDelta} points above` : `${Math.abs(classDelta)} points below`} the class average on this attempt.`,
+        `Your result shows your current strengths and the exact concepts to review next.`,
         hardMisses.length
           ? `Most of your misses came on higher-difficulty questions, which means the system was already pushing you into more advanced material.`
           : `Your misses were spread across easier and medium questions, so consistency matters more than difficulty ceiling right now.`,
@@ -1261,7 +1259,7 @@
         'Before the next test, compare time complexity, space complexity, and “best algorithm for the scenario” as three separate question types.'
       ];
 
-      const teacherSummary = `${data.student.name} scored ${data.score}% (${classDelta >= 0 ? '+' : ''}${classDelta} vs class average) and remained competitive as the adaptive engine elevated difficulty. Errors cluster around algorithm-choice reasoning rather than raw definition recall, suggesting a conceptual gap in matching constraints to strategy rather than memorization failure.`;
+      const teacherSummary = `${data.student.name} scored ${data.score}% and remained stable as the adaptive engine elevated difficulty. Errors cluster around algorithm-choice reasoning rather than raw definition recall, suggesting a conceptual gap in matching constraints to strategy rather than memorization failure.`;
 
       const teacherAlert = hardMisses.length
         ? `This student reached advanced difficulty repeatedly, but the wrong answers at that tier were concentrated around decision-making prompts. Intervention should target transfer and comparison, not basic content review.`
@@ -1312,7 +1310,7 @@
       setText('hero-correct', `${data.correctCount} / ${data.totalQuestions}`);
       setText('hero-time', data.timeTaken);
       setText('hero-level-change', `Level ${data.adaptiveLevelBefore} → ${data.adaptiveLevelAfter}`);
-      setText('hero-class-compare', `${data.score - data.classAverage >= 0 ? '+' : ''}${data.score - data.classAverage} vs class avg`);
+      setText('hero-review-progress', `${data.reviewCompletion}%`);
       setText('hero-summary', `${data.student.firstName} completed this attempt at ${data.status.toLowerCase()} level, with the strongest performance in ${insights.strongTopics[0] ? insights.strongTopics[0].name : 'core concepts'} and the main improvement area in ${insights.weakTopics[0] ? insights.weakTopics[0].name : 'consistency under pressure'}.`);
       setText('difficulty-insight', insights.difficultyInsight);
       setText('mastery-badge', `${insights.strongTopics.length} strong area${insights.strongTopics.length === 1 ? '' : 's'}`);
@@ -1332,8 +1330,8 @@
       const target = document.getElementById('student-stats-grid');
       if (!target) return;
       const html = [
-        buildStatCard(`${data.percentile}th`, 'Percentile', 'Compared to current class set'),
-        buildStatCard(`${data.classAverage}%`, 'Class Average', `${data.score - data.classAverage >= 0 ? '+' : ''}${data.score - data.classAverage} point gap`),
+        buildStatCard(`${data.score}%`, 'Score', 'Current attempt'),
+        buildStatCard(`${data.correctCount}/${data.totalQuestions}`, 'Accuracy', 'Questions correct'),
         buildStatCard(`${data.reviewCompletion}%`, 'Review Completion', 'AI review engagement'),
         buildStatCard(`${data.aiConfidence}%`, 'AI Confidence', 'Model certainty on feedback')
       ].join('');
@@ -1345,8 +1343,8 @@
       if (!target) return;
       const html = [
         buildStatCard(`${data.score}%`, 'Student Score', data.status),
-        buildStatCard(`${data.classAverage}%`, 'Class Average', `${data.score - data.classAverage >= 0 ? '+' : ''}${data.score - data.classAverage} vs class`),
-        buildStatCard(`${Math.round((data.correctCount / data.totalQuestions) * 100)}%`, 'Item Accuracy', `${data.correctCount} of ${data.totalQuestions} items correct`),
+        buildStatCard(`${data.correctCount}/${data.totalQuestions}`, 'Accuracy', 'Questions correct'),
+        buildStatCard(`${data.reviewCompletion}%`, 'Review Completion', 'AI review engagement'),
         buildStatCard(`${insights.aiPriority.length}`, 'AI Priority Items', 'Questions worth follow-up')
       ].join('');
       target.innerHTML = html;
@@ -1471,8 +1469,8 @@
     function renderTeacherTables() {
       const comparisonGrid = document.getElementById('comparison-grid');
       if (comparisonGrid) comparisonGrid.innerHTML = [
-        { label: 'Student Score', value: `${resultData.score}%`, delta: `${resultData.score - resultData.classAverage >= 0 ? '+' : ''}${resultData.score - resultData.classAverage} vs class`, tone: resultData.score >= resultData.classAverage ? 'good' : 'bad' },
-        { label: 'Percentile', value: `${resultData.percentile}th`, delta: 'Within current cohort', tone: 'good' },
+        { label: 'Student Score', value: `${resultData.score}%`, delta: resultData.status, tone: resultData.score >= 70 ? 'good' : 'warn' },
+        { label: 'Accuracy', value: `${resultData.correctCount}/${resultData.totalQuestions}`, delta: 'Questions correct', tone: 'good' },
         { label: 'Adaptive Finish', value: `Level ${resultData.adaptiveLevelAfter}`, delta: `Started at level ${resultData.adaptiveLevelBefore}`, tone: 'warn' }
       ].map(card => `
         <div class="comparison-card">

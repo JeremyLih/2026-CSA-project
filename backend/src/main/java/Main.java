@@ -292,8 +292,7 @@ public class Main {
             System.err.println("Failed to fetch unit " + unit + " from Supabase: " + e.getMessage());
         }
 
-        // Fallback so question generation still proceeds when the units table
-        // is unseeded or unreachable.
+        // Fallback so question generation still proceeds when the units table is unseeded or unreachable.
         return """
                 AP CSA CURRICULUM CONTEXT
 

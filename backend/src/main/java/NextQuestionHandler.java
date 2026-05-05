@@ -37,19 +37,18 @@ public final class NextQuestionHandler implements HttpHandler {
             String sessionId = (String) payload.get("sessionId");
             Object difficultyRaw = payload.get("difficulty");
             int difficulty = difficultyRaw instanceof Number n ? n.intValue() : 2;
+            Object wasCorrectRaw = payload.get("wasCorrect");
+            Boolean wasCorrect = wasCorrectRaw instanceof Boolean b ? b : null;
 
             if (sessionId == null || sessionId.isBlank()) {
                 HttpResponses.sendJson(exchange, 400, HttpResponses.error("`sessionId` is required."));
                 return;
             }
 
-            TestSession session = sessionStore.getSession(sessionId);
-            if (session == null) {
-                HttpResponses.sendJson(exchange, 404, HttpResponses.error("Session not found."));
-                return;
-            }
+            // Just log the sessionId, don't block on it
+            System.out.println("Question request for session: " + sessionId);
 
-            GeneratedQuestion question = GeminiQuestion.generate(gemini, difficulty);
+            GeneratedQuestion question = GeminiQuestion.generate(gemini, difficulty, wasCorrect);
 
             String json = """
             {
@@ -61,7 +60,7 @@ public final class NextQuestionHandler implements HttpHandler {
             }
             """.formatted(
                 question.questionId(),
-                question.text().replace("\\", "\\\\").replace("\"", "\\\""),
+                Json.escape(question.text()),
                 formatChoices(question.choices()),
                 question.correctChoice(),
                 question.difficulty()
@@ -85,7 +84,7 @@ public final class NextQuestionHandler implements HttpHandler {
                 {"id":"%s","text":"%s"}
             """.formatted(
                 choices.get(i).id(),
-                choices.get(i).text().replace("\\", "\\\\").replace("\"", "\\\"")
+                Json.escape(choices.get(i).text())
             ));
         }
         return sb.toString();

@@ -48,7 +48,7 @@ public final class NextQuestionHandler implements HttpHandler {
             // Just log the sessionId, don't block on it
             System.out.println("Question request for session: " + sessionId);
 
-            GeneratedQuestion question = GeminiQuestion.generate(gemini, difficulty, wasCorrect);
+            GeneratedQuestion question = GeminiQuestion.generate(gemini, difficulty);
 
             String json = """
             {

@@ -69,6 +69,10 @@ public class Gemini {
                 if (response.statusCode() != 200) {
                     System.out.println("Gemini HTTP error: " + response.statusCode());
                     System.out.println(body);
+                    if (response.statusCode() >= 400 && response.statusCode() < 500) {
+                        throw new RuntimeException(
+                                "Gemini HTTP " + response.statusCode() + " (no retry): " + body);
+                    }
                     continue;
                 }
 
@@ -89,7 +93,7 @@ public class Gemini {
 
                 return extracted;
 
-            } catch (Exception e) {
+            } catch (java.io.IOException | InterruptedException e) {
                 System.out.println("Gemini attempt " + attempts + " failed: " + e.getMessage());
 
                 try {

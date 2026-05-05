@@ -338,12 +338,16 @@
     answerMap:       {},
     flagged:         new Set(),
     questions:       [],
-    currentDifficulty: 3,
+    currentDifficulty: 1,
     difficultyPath:    [],
     previewChoice:     null,
   };
 
-  const API_BASE = 'http://localhost:8080';
+  const API_BASE = (() => {
+    const host = window.location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    return isLocal ? 'http://localhost:8080' : 'https://cs.andromedax.org';
+  })();
 
   function makePendingQuestion(index) {
     return { questionId: `Q-PENDING-${index + 1}`, text: '', choices: [], correct: null };
@@ -363,13 +367,14 @@
     };
   }
 
-  async function fetchQuestionInto(index) {
-    const response = await fetch(`${API_BASE}/api/next-question`, {
+  async function fetchQuestionInto(index, adaptation = {}) {
+    const response = await fetch(`${API_BASE}/api/questions/next`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         sessionId: testState.sessionId,
-        difficulty: testState.currentDifficulty
+        difficulty: testState.currentDifficulty,
+        ...adaptation
       })
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -392,7 +397,7 @@
     renderDifficultyPath();
 
     try {
-      const startResp = await fetch(`${API_BASE}/api/start-session`, {
+      const startResp = await fetch(`${API_BASE}/api/sessions/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -459,7 +464,7 @@
 
     document.getElementById('prev-btn').disabled = true;
     document.getElementById('next-btn').textContent =
-      (index === testState.totalQuestions - 1) ? 'Finish →' : 'Next →';
+      (index === testState.totalQuestions - 1) ? 'Finish' : 'Next';
 
     updateDifficultyBadge();
     startTimer();
@@ -532,7 +537,11 @@
     document.getElementById('next-btn').disabled = true;
 
     try {
-      await fetchQuestionInto(next);
+      await fetchQuestionInto(next, {
+        previousQuestionId: q.questionId,
+        selectedChoice: choice || null,
+        wasCorrect: correct
+      });
     } catch (err) {
       console.error('Next question fetch failed:', err);
       testState.questions[next] = makeFallbackQuestion(next);

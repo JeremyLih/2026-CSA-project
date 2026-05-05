@@ -6,6 +6,7 @@
 
     <title>Teacher Dashboard — Adaptive Test Engine</title>
     <link rel="stylesheet" href="teacher-style.css" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
 
   <body class="page-wrapper">
@@ -18,6 +19,7 @@
     <header class="site-header">
       <div class="logo">Adaptive <span>Test&nbsp;Engine</span></div>
 
+      <!-- Protected navigation: only visible after sign-in -->
       <!-- Protected navigation: only visible after sign-in -->
       <nav
         class="hide-mobile"
@@ -67,19 +69,40 @@
             suggest review topics, and push students at their individual level.
           </p>
 
-          <div class="public-actions">
+          <div class="public-actions teacher-google-actions">
+            <!--
+              Google Identity Services renders the real Google button here.
+              If Google fails to load, the styled fallback button below still works.
+            -->
+            <div
+              id="teacher-google-signin-container"
+              class="teacher-google-signin-container"
+              hidden
+            ></div>
+
             <button
               class="btn btn-primary btn-lg google-btn wide-google"
+              id="teacher-google-signin-stub"
               onclick="signInWithGoogle()"
             >
               <span class="google-icon">G</span>
               Sign in with Google
             </button>
+
+            <button
+              class="btn btn-outline btn-sm teacher-demo-button"
+              id="teacher-demo-signin-button"
+              onclick="signInDemoTeacher()"
+              hidden
+            >
+              Continue in Demo Mode
+            </button>
           </div>
 
-          <div class="alert alert-warning">
-            Demo mode: this button currently simulates Google sign-in. Your
-            backend/auth team can connect real Google OAuth later.
+          <div class="alert alert-info" id="teacher-auth-message">
+            Teachers can sign in with Google. If the backend is not connected
+            yet, the page safely uses the Google profile claims as a temporary
+            frontend session.
           </div>
         </div>
 
@@ -243,6 +266,36 @@
                   id="course-description"
                   placeholder="Short overview shown on the dashboard"
                 ></textarea>
+              </div>
+
+              <div class="form-group full-width">
+                <label for="course-curriculum-input">Curriculum PDF</label>
+                <div
+                  class="file-drop-zone curriculum-drop-zone"
+                  id="course-curriculum-drop-zone"
+                  tabindex="0"
+                  role="button"
+                  aria-label="Upload a curriculum PDF for this course"
+                >
+                  <input
+                    id="course-curriculum-input"
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    hidden
+                  />
+                  <div class="file-drop-content">
+                    <strong>Add a curriculum guide for AI context</strong>
+                    <span
+                      >Optional: upload the course outline, unit guide, or
+                      syllabus PDF.</span
+                    >
+                  </div>
+                </div>
+                <div
+                  id="course-curriculum-preview"
+                  class="file-preview"
+                  hidden
+                ></div>
               </div>
 
               <div class="full-width form-actions">
@@ -602,14 +655,82 @@
           <!-- COURSE TAB: QUESTION BANK -->
           <section class="course-tab-screen" id="course-tab-question-bank">
             <div class="section-heading">
-              <h2>Question Bank</h2>
-              <button
-                class="btn btn-accent"
-                onclick="generateAIQuestionPlaceholder()"
-              >
-                ✨ Generate AI Question
-              </button>
+              <div>
+                <h2>Question Bank</h2>
+                <p>
+                  Use saved questions or generate AI placeholders for the
+                  current draft.
+                </p>
+              </div>
+              <span class="badge badge-accent">AI Assisted</span>
             </div>
+
+            <section class="card ai-generator-card">
+              <div class="ai-generator-copy">
+                <span class="badge badge-accent">Generate with AI</span>
+                <h2>Build draft questions from the course curriculum</h2>
+                <p>
+                  Choose a topic, format, difficulty, and amount. The demo adds
+                  clean placeholders now; the backend can replace these with
+                  real AI output later.
+                </p>
+              </div>
+
+              <div class="ai-generator-controls">
+                <div class="form-group">
+                  <label for="ai-topic-input">Topic / Skill</label>
+                  <input
+                    id="ai-topic-input"
+                    type="text"
+                    placeholder="Example: ArrayList traversal"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="ai-question-type">Question Type</label>
+                  <select id="ai-question-type">
+                    <option value="Multiple Choice">Multiple Choice</option>
+                    <option value="Free Response">Free Response</option>
+                    <option value="Mixed">Mixed</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="ai-difficulty">Difficulty</label>
+                  <select id="ai-difficulty">
+                    <option value="Easy">Easy</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="Hard">Hard</option>
+                    <option value="Adaptive">Adaptive</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="ai-question-count">Amount</label>
+                  <input
+                    id="ai-question-count"
+                    type="number"
+                    min="1"
+                    max="5"
+                    value="3"
+                  />
+                </div>
+              </div>
+
+              <div class="ai-generator-actions">
+                <button
+                  class="btn btn-accent btn-lg"
+                  type="button"
+                  onclick="generateAIQuestionPlaceholder()"
+                >
+                  ✨ Generate Draft Questions
+                </button>
+                <p id="ai-generator-context-note">
+                  AI will use the selected course unit and curriculum PDF when
+                  available.
+                </p>
+              </div>
+            </section>
 
             <div class="question-bank-layout">
               <div class="card">
@@ -640,36 +761,310 @@
           <section class="course-tab-screen" id="course-tab-results">
             <div class="section-heading">
               <h2>Results</h2>
-              <span class="badge badge-accent">Placeholder Page</span>
+              <span class="badge badge-accent">Assessment Reports</span>
             </div>
 
-            <section class="results-placeholder">
-              <h1>RESULTS</h1>
-              <p>
-                Placeholder for the Results/Data Reporting group. Completed test
-                data is shown below for layout testing.
-              </p>
+            <section class="results-placeholder results-report-hero">
+              <div>
+                <span class="badge badge-accent">Assessment Center</span>
+                <h1>RESULTS</h1>
+                <p>
+                  Select an assessment to view completion status, class
+                  averages, individual student results, and topic-level
+                  understanding.
+                </p>
+              </div>
+            </section>
+
+            <section
+              class="stats-strip results-summary-strip assessment-detail-section"
+              hidden
+            >
+              <div class="stat-card">
+                <div class="stat-value" id="results-completed-count">0</div>
+                <div class="stat-label">Completed</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-value" id="results-average-score">—</div>
+                <div class="stat-label">Selected Average</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-value" id="results-primary-level">—</div>
+                <div class="stat-label">Most Common Level</div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-value" id="results-beyond-count">0</div>
+                <div class="stat-label">Beyond AP</div>
+              </div>
             </section>
 
             <section class="section-block">
               <div class="section-heading">
-                <h2>Completed Tests</h2>
+                <div>
+                  <h2>Assessments</h2>
+                  <p>Select a test or assignment to view its results.</p>
+                </div>
+                <span class="badge badge-slate">Course Assessments</span>
+              </div>
+
+              <div
+                id="assessment-results-list"
+                class="assessment-results-grid"
+              ></div>
+            </section>
+
+            <section
+              class="section-block selected-assessment-panel assessment-detail-section"
+              id="selected-assessment-panel"
+              hidden
+            >
+              <section class="selected-results-hero">
+                <div>
+                  <div class="hero-topline">
+                    <span
+                      class="badge badge-accent"
+                      id="selected-assessment-type-badge"
+                      >Assessment</span
+                    >
+                    <span
+                      class="badge badge-info"
+                      id="selected-assessment-difficulty-badge"
+                      >Difficulty</span
+                    >
+                  </div>
+
+                  <h2 id="selected-assessment-title">Assessment Results</h2>
+                  <p id="selected-assessment-summary">
+                    Choose an assessment above to view student completion and
+                    scores.
+                  </p>
+
+                  <div
+                    class="selected-results-meta"
+                    id="selected-assessment-meta"
+                  ></div>
+                  <div
+                    class="selected-results-summary"
+                    id="selected-assessment-ai-summary"
+                  ></div>
+                </div>
+
+                <div
+                  class="score-circle"
+                  aria-label="Selected assessment average"
+                >
+                  <div
+                    class="score-pct"
+                    id="selected-assessment-average-circle"
+                  >
+                    —
+                  </div>
+                  <div class="score-label">Class Average</div>
+                </div>
+              </section>
+
+              <div class="assessment-student-columns">
+                <div class="card table-card">
+                  <div class="mini-card-heading">
+                    <h3>Completed Students</h3>
+                    <p>Students with submitted results for this assessment.</p>
+                  </div>
+
+                  <table class="teacher-table">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Score</th>
+                        <th>Understanding</th>
+                        <th>Date</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+
+                    <tbody id="assessment-completed-student-list"></tbody>
+                  </table>
+                </div>
+
+                <div class="card missing-students-card">
+                  <div class="mini-card-heading">
+                    <h3>Not Completed Yet</h3>
+                    <p>
+                      Placeholder completion data. Replace with backend
+                      submission status later.
+                    </p>
+                  </div>
+
+                  <div
+                    id="assessment-missing-student-list"
+                    class="missing-student-list"
+                  ></div>
+                </div>
+              </div>
+            </section>
+
+            <section
+              class="results-insight-grid section-block assessment-detail-section"
+              hidden
+            >
+              <div class="card" id="ai-class-review-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>AI Class Review</h2>
+                    <p>
+                      Automatic class-level summary for the selected assessment.
+                    </p>
+                  </div>
+                  <span class="badge badge-accent">AI Brief</span>
+                </div>
+
+                <div class="alert alert-warning" id="teacher-alert"></div>
+
+                <div class="ai-review-body">
+                  <div>
+                    <h3>Summary</h3>
+                    <p id="ai-summary"></p>
+                  </div>
+
+                  <div>
+                    <h3>Recommended Actions</h3>
+                    <ul class="mini-list" id="teacher-actions"></ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card" id="score-distribution-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>Level Distribution</h2>
+                    <p>
+                      How the class is distributed across understanding bands.
+                    </p>
+                  </div>
+                  <span class="badge badge-info">Cohort View</span>
+                </div>
+
+                <div class="distribution-wrap" id="level-distribution"></div>
+              </div>
+            </section>
+
+            <section
+              class="results-layout-grid section-block assessment-detail-section"
+              hidden
+            >
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Class Topic Averages</h2>
+                    <p>
+                      Average topic performance across completed student
+                      submissions for the selected assessment.
+                    </p>
+                  </div>
+                  <span class="badge badge-navy">Class Topics</span>
+                </div>
+
+                <div id="topic-understanding-list" class="topic-list"></div>
               </div>
 
               <div class="card table-card">
-                <table class="teacher-table">
-                  <thead>
-                    <tr>
-                      <th>Student</th>
-                      <th>Test</th>
-                      <th>Score</th>
-                      <th>Date</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>Question-Level Analysis</h2>
+                    <p>
+                      Combined question performance across the selected
+                      assessment.
+                    </p>
+                  </div>
+                  <span class="badge badge-slate">Diagnostics</span>
+                </div>
 
-                  <tbody id="course-results-body"></tbody>
-                </table>
+                <div class="table-wrap">
+                  <table class="teacher-table">
+                    <thead>
+                      <tr>
+                        <th>Question</th>
+                        <th>Topic</th>
+                        <th>Class Average</th>
+                        <th>Evidence</th>
+                      </tr>
+                    </thead>
+                    <tbody id="item-analysis-body"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            <section class="section-block assessment-detail-section" hidden>
+              <div class="section-heading">
+                <h2>Understanding Levels</h2>
+                <span class="badge badge-slate">Selected Assessment</span>
+              </div>
+
+              <div
+                id="understanding-level-grid"
+                class="understanding-grid"
+              ></div>
+            </section>
+
+            <section class="section-block assessment-detail-section" hidden>
+              <div class="card table-card">
+                <div class="card-header">
+                  <div class="card-title-block">
+                    <h2>Class Performance Table</h2>
+                    <p>Filter completed student results by support level.</p>
+                  </div>
+                  <span class="badge badge-info">Roster</span>
+                </div>
+
+                <div class="filter-row" id="student-filters">
+                  <button
+                    class="chip active"
+                    type="button"
+                    onclick="filterAssessmentStudents('all', this)"
+                  >
+                    All Students
+                  </button>
+                  <button
+                    class="chip"
+                    type="button"
+                    onclick="filterAssessmentStudents('high', this)"
+                  >
+                    High Performers
+                  </button>
+                  <button
+                    class="chip"
+                    type="button"
+                    onclick="filterAssessmentStudents('mid', this)"
+                  >
+                    On Track
+                  </button>
+                  <button
+                    class="chip"
+                    type="button"
+                    onclick="filterAssessmentStudents('risk', this)"
+                  >
+                    Needs Support
+                  </button>
+                </div>
+
+                <div class="table-wrap">
+                  <table class="teacher-table">
+                    <thead>
+                      <tr>
+                        <th>Student</th>
+                        <th>Band</th>
+                        <th>Score</th>
+                        <th>Focus Area</th>
+                        <th>AI Flag</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody id="student-results-body"></tbody>
+                  </table>
+                </div>
               </div>
             </section>
           </section>
@@ -689,17 +1084,16 @@
             ← Back to Course
           </button>
 
-          <section class="results-placeholder">
+          <section class="results-placeholder test-detail-hero">
             <h1 id="test-detail-title">TEST PAGE</h1>
-            <p>
-              Placeholder test detail page. Later, this could show assigned
-              students, due date, question editor, and publishing controls.
+            <p id="test-detail-description">
+              Open a created test to view its file, settings, and questions.
             </p>
 
             <div class="form-actions center-actions">
               <button
                 class="btn btn-accent"
-                onclick="showCourseTabFromTest('results')"
+                onclick="showResultsForCurrentTest()"
               >
                 View Results
               </button>
@@ -710,6 +1104,161 @@
               >
                 Back to Course
               </button>
+            </div>
+          </section>
+
+          <section class="section-block">
+            <div class="teacher-grid">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Test Details</h2>
+                    <p>Metadata from the test creation form.</p>
+                  </div>
+                </div>
+
+                <div id="test-detail-meta" class="preview-list"></div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <h2>Questions</h2>
+                    <p>Question draft attached to this assessment.</p>
+                  </div>
+                </div>
+
+                <div id="test-detail-question-list" class="question-list"></div>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <!-- ========================================================
+           SCREEN 4: INDIVIDUAL STUDENT RESULT PAGE
+           --------------------------------------------------------
+           Placeholder report view for a single student's assessment.
+           Later, replace the placeholder result objects in JS with
+           backend/API data while keeping the rendering functions.
+           ======================================================== -->
+        <section class="app-screen" id="screen-student-result-detail">
+          <button
+            class="btn btn-sm btn-outline back-button"
+            onclick="returnToSelectedAssessmentResults()"
+          >
+            ← Back to Assessment Results
+          </button>
+
+          <section class="student-result-hero results-placeholder">
+            <div>
+              <span class="badge badge-accent" id="student-result-course-code"
+                >COURSE</span
+              >
+              <h1 id="student-result-page-name">Student Result</h1>
+              <p id="student-result-page-summary">
+                Select a completed student from an assessment to view their
+                report.
+              </p>
+            </div>
+          </section>
+
+          <section class="stats-strip results-summary-strip">
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-score">—</div>
+              <div class="stat-label">Score</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-level">—</div>
+              <div class="stat-label">Understanding</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-earned">—</div>
+              <div class="stat-label">Points</div>
+            </div>
+
+            <div class="stat-card">
+              <div class="stat-value" id="student-result-date">—</div>
+              <div class="stat-label">Submitted</div>
+            </div>
+          </section>
+
+          <section class="student-result-actions">
+            <button
+              class="btn btn-accent"
+              onclick="openAssessmentFromStudentResult()"
+            >
+              View Assessment
+            </button>
+            <button
+              class="btn btn-outline"
+              onclick="returnToSelectedAssessmentResults()"
+            >
+              Back to Assessment Results
+            </button>
+          </section>
+
+          <section class="results-layout-grid section-block">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Skill Breakdown</h2>
+                  <p>Question/topic evidence for this student.</p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-skill-list"
+                class="student-topic-list"
+              ></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Teacher Notes</h2>
+                  <p>Placeholder recommendations generated from the result.</p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-recommendations"
+                class="suggestion-list"
+              ></div>
+            </div>
+          </section>
+
+          <section class="student-submission-grid section-block">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Assessment Reference</h2>
+                  <p>Quick access back to the test page for this submission.</p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-test-link-card"
+                class="preview-list"
+              ></div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h2>Student Answer Preview</h2>
+                  <p>
+                    Placeholder answer data for now. Replace this with real
+                    submission text later.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                id="student-result-answer-preview"
+                class="answer-preview-list"
+              ></div>
             </div>
           </section>
         </section>

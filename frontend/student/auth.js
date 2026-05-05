@@ -10,9 +10,15 @@
  *   → 200 { token, student: { id, name, email, avatar } }
  */
 
+function resolveBackendBase() {
+  const host = window.location.hostname;
+  const isLocal = host === 'localhost' || host === '127.0.0.1';
+  return isLocal ? 'http://localhost:8080' : 'https://cs.andromedax.org';
+}
+
 const AUTH_CONFIG = {
   CLIENT_ID: '680126421530-3l43rbetvdghr01pq0ecnfpecb49cikj.apps.googleusercontent.com',
-  BACKEND_URL: 'http://localhost:8080',
+  BACKEND_URL: resolveBackendBase(),
 };
 
 const SESSION_KEYS = {

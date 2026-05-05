@@ -1,4 +1,10 @@
-const API_BASE_URL = "http://localhost:8080";
+function resolveBackendBase() {
+    const host = window.location.hostname;
+    const isLocal = host === "localhost" || host === "127.0.0.1";
+    return isLocal ? "http://localhost:8080" : "https://cs.andromedax.org";
+}
+
+const API_BASE_URL = resolveBackendBase();
 
 //
 // LOGIN

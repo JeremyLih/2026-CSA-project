@@ -634,7 +634,11 @@
     previewChoice:     null,
   };
 
-  const API_BASE = 'http://localhost:8080';
+  const API_BASE = (() => {
+    const host = window.location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    return isLocal ? 'http://localhost:8080' : 'https://cs.andromedax.org';
+  })();
 
   // Each entry stays as a placeholder until the backend delivers a real
   // question for that index — populated lazily by fetchQuestionInto().

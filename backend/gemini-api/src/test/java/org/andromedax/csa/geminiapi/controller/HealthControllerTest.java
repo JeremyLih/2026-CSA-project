@@ -11,7 +11,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(HealthController.class)
-@TestPropertySource(properties = "app.gemini.model=gemini-3-flash-preview")
+@TestPropertySource(properties = "app.gemini.model=gemini-3.1-flash-lite")
 class HealthControllerTest {
 
     @Autowired
@@ -25,7 +25,7 @@ class HealthControllerTest {
                         {
                           "status": "ok",
                           "service": "gemini-api",
-                          "model": "gemini-3-flash-preview"
+                          "model": "gemini-3.1-flash-lite"
                         }
                         """));
     }

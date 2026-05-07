@@ -123,15 +123,16 @@ async function getNextQuestion() {
 // 
 let selectedAnswer = null;
 
-function selectAnswer(questionId, choiceId, element) {
+if (typeof window.selectAnswer !== "function") {
+    window.selectAnswer = function selectAnswer(questionId, choiceId, element) {
+        selectedAnswer = choiceId;
 
-    selectedAnswer = choiceId;
+        // remove old selection
+        document.querySelectorAll(".choice-btn").forEach(btn => {
+            btn.classList.remove("selected");
+        });
 
-    // remove old selection
-    document.querySelectorAll(".choice-btn").forEach(btn => {
-        btn.classList.remove("selected");
-    });
-
-    // highlight selected
-    element.classList.add("selected");
+        // highlight selected
+        element.classList.add("selected");
+    };
 }

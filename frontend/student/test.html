@@ -367,6 +367,10 @@
     };
   }
 
+  function normalizeChoiceId(value) {
+    return String(value ?? '').trim().toUpperCase();
+  }
+
   async function fetchQuestionInto(index, adaptation = {}) {
     const response = await fetch(`${API_BASE}/api/next-question`, {
       method: 'POST',
@@ -379,11 +383,18 @@
     });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
+    const choices = Array.isArray(data.choices)
+      ? data.choices.map((choice, choiceIndex) => ({
+          ...choice,
+          id: normalizeChoiceId(choice.id || String.fromCharCode(65 + choiceIndex)),
+          text: String(choice.text ?? '')
+        }))
+      : [];
     testState.questions[index] = {
       questionId: data.questionId || `Q-AI-${index + 1}`,
       text: data.text,
-      choices: data.choices,
-      correct: data.correctChoice
+      choices,
+      correct: normalizeChoiceId(data.correctChoice ?? data.correct ?? data.correct_answer)
     };
   }
 
@@ -475,20 +486,27 @@
     list.innerHTML = '';
     question.choices.forEach(choice => {
       const li = document.createElement('li');
-      li.innerHTML = `
-        <button
-          class="choice-btn"
-          data-choice="${choice.id}"
-          data-question-id="${question.questionId}"
-          onclick="selectAnswer('${question.questionId}', '${choice.id}', this)"
-          role="radio"
-          aria-checked="false"
-          aria-label="Choice ${choice.id}: ${choice.text}"
-        >
-          <span class="choice-letter" aria-hidden="true">${choice.id}</span>
-          <span class="choice-text">${choice.text}</span>
-        </button>
-      `;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'choice-btn';
+      button.dataset.choice = choice.id;
+      button.dataset.questionId = question.questionId;
+      button.setAttribute('role', 'radio');
+      button.setAttribute('aria-checked', 'false');
+      button.setAttribute('aria-label', `Choice ${choice.id}: ${choice.text}`);
+      button.addEventListener('click', () => selectAnswer(question.questionId, choice.id, button));
+
+      const letter = document.createElement('span');
+      letter.className = 'choice-letter';
+      letter.setAttribute('aria-hidden', 'true');
+      letter.textContent = choice.id;
+
+      const text = document.createElement('span');
+      text.className = 'choice-text';
+      text.textContent = choice.text;
+
+      button.append(letter, text);
+      li.appendChild(button);
       list.appendChild(li);
     });
   }
@@ -500,7 +518,7 @@
     });
     el.classList.add('selected');
     el.setAttribute('aria-checked', 'true');
-    testState.previewChoice = choiceId;
+    testState.previewChoice = normalizeChoiceId(choiceId);
   }
 
   async function commitAndAdvance() {

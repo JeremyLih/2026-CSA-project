@@ -80,7 +80,7 @@ public class GeminiService {
                 String upstreamMessage = extractErrorMessage(response.body());
                 logger.warn("Gemini API error {}: {}", response.statusCode(), upstreamMessage);
                 throw new ResponseStatusException(
-                        HttpStatus.BAD_GATEWAY,
+                        HttpStatus.SERVICE_UNAVAILABLE,
                         "Gemini API returned HTTP " + response.statusCode() + ": " + upstreamMessage
                 );
             }
@@ -88,14 +88,14 @@ public class GeminiService {
             String reply = extractReply(response.body());
             if (reply == null || reply.isBlank()) {
                 throw new ResponseStatusException(
-                        HttpStatus.BAD_GATEWAY,
+                        HttpStatus.SERVICE_UNAVAILABLE,
                         "Gemini response did not include reply text."
                 );
             }
 
             return reply;
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Gemini network error.", e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Gemini network error.", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "Gemini request interrupted.", e);
@@ -114,8 +114,12 @@ public class GeminiService {
 
             return textNode.isTextual() ? textNode.asText() : null;
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to parse Gemini response.", e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Failed to parse Gemini response.", e);
         }
+    }
+
+    public String model() {
+        return model;
     }
 
     private String extractErrorMessage(String responseBody) {
